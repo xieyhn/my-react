@@ -7,6 +7,8 @@ export default defineConfig({
     alias: {
       react: path.resolve(__dirname, 'packages/react'),
       shared: path.resolve(__dirname, 'packages/shared'),
+      'react-dom': path.resolve(__dirname, 'packages/react-dom'),
+      'react-reconciler': path.resolve(__dirname, 'packages/react-reconciler'),
     }
   },
   plugins: [
