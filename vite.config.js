@@ -9,6 +9,7 @@ export default defineConfig({
       shared: path.resolve(__dirname, 'packages/shared'),
       'react-dom': path.resolve(__dirname, 'packages/react-dom'),
       'react-reconciler': path.resolve(__dirname, 'packages/react-reconciler'),
+      scheduler: path.resolve(__dirname, 'packages/scheduler'),
     }
   },
   plugins: [

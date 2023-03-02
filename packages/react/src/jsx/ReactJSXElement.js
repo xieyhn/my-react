@@ -16,13 +16,14 @@ function hasValidRef(config) {
   return config.ref !== undefined
 }
 
-function ReactElement(type, key, ref, props) {
+export function ReactElement(type, key, ref, props) {
   return {
     $$typeof: REACT_ELEMENT_TYPE,
     type,
     key,
     ref,
     props,
+    a: 1
   }
 }
 

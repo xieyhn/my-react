@@ -1,8 +1,12 @@
 import { createHostRootFiber } from './ReactFiber'
 import { initialUpdateQueue } from './ReactFiberClassUpdateQueue'
 
-function FiberRootNode(containerInfo) {
+export function FiberRootNode(containerInfo) {
   this.containerInfo = containerInfo
+  /**
+   * @type {import('./ReactFiber').FiberNode}
+   */
+  this.current = null
 }
 
 export function createFiberRoot(containerInfo) {
