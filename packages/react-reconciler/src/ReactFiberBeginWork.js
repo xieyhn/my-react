@@ -25,7 +25,6 @@ function updateHostRoot(current, workInProgress) {
   const nextState = workInProgress.memoizedState
   const nextChildren = nextState.element
   reconcileChildren(current, workInProgress, nextChildren)
-  debugger
   return workInProgress.child
 }
 
