@@ -121,6 +121,7 @@ function processDispatchQueue(dispatchQueue, eventSystemFlags) {
 }
 
 function executeDispatch(event, listener, currentTarget) {
+  // 在捕获或冒泡时，currentTarget 是在变化的
   event.currentTarget = currentTarget
   listener(event)
 }
