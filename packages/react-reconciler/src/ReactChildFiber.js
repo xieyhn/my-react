@@ -38,7 +38,7 @@ function createChildReconciler(shouldTrackSideEffects) {
     if ((typeof newChild === 'string' && newChild !== '') || typeof newChild === 'number') {
       // 转换为字符串
       const created = createFiberFromText(`${newChild}`)
-      created.returnFiber = returnFiber
+      created.return = returnFiber
       return created
     } else if (typeof newChild === 'object' && newChild !== null) {
       switch (newChild.$$typeof) {
@@ -46,7 +46,6 @@ function createChildReconciler(shouldTrackSideEffects) {
           const created = createFiberFromElement(newChild)
           created.return = returnFiber
           return created
-          break
         }
         default:
           break

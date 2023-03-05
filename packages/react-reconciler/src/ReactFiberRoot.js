@@ -7,6 +7,11 @@ export function FiberRootNode(containerInfo) {
    * @type {import('./ReactFiber').FiberNode}
    */
   this.current = null
+
+  /**
+   * @type {import('./ReactFiber').FiberNode}
+   */
+  this.finishedWork = null
 }
 
 export function createFiberRoot(containerInfo) {

@@ -2,6 +2,7 @@ import { schedulerCallback } from 'scheduler/index'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
 import { completeWork } from './ReactFiberCompleteWork'
+import { MutationMask, NoFlags } from './ReactFiberFlags'
 
 /** @type {import('./ReactFiber').FiberNode} */
 let workInProgress = null
@@ -26,7 +27,25 @@ function ensureRootIsScheduled(root) {
 function performConcurrentWorkOnRoot(root) {
   // 第一次渲染以同步方式，为了尽快展示页面
   renderRootSync(root)
-  console.log(root.current.alternate)
+  // commit
+  const finishedWork = root.current.alternate
+  root.finishedWork = finishedWork
+  commitRoot(root)
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ */
+function commitRoot(root) {
+  const { finishedWork } = root
+  const rootHasEffect = finishedWork.flags & MutationMask
+  const subtreeHasEffects = finishedWork.subtreeFlags & MutationMask
+
+  if (rootHasEffect || subtreeHasEffects) {
+    debugger
+  }
+
+  root.current = finishedWork
 }
 
 /**
@@ -55,7 +74,7 @@ function workLoopSync() {
  */
 function performUnitOfWork(unitOfWork) {
   const current = unitOfWork.alternate
-  // 返回子节点
+  // 返回第一个子节点
   const next = beginWork(current, unitOfWork)
   unitOfWork.memoizedProps = unitOfWork.pendingProps
   if (!next) {
@@ -70,17 +89,21 @@ function performUnitOfWork(unitOfWork) {
  */
 function completeUnitWork(unitOfWork) {
   let completedWork = unitOfWork
+
   do {
     const current = completedWork.alternate
     const returnFiber = completedWork.return
-    completeWork(current, completedWork)
     const siblingFiber = completedWork.sibling
+    completeWork(current, completedWork)
+
+    // 完成此 fiber 之后，如果有兄弟节点，去兄弟节点开始 beginWork
     if (siblingFiber) {
       workInProgress = siblingFiber
       return
     }
-    // 完成了所有的子 Fiber，接着完成父 Fiber
+
+    // 没有了兄弟 fiber，返回处理父节点
     completedWork = returnFiber
-    workInProgress = completedWork
+    workInProgress = returnFiber
   } while (completedWork)
 }

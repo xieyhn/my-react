@@ -22,8 +22,7 @@ export function ReactElement(type, key, ref, props) {
     type,
     key,
     ref,
-    props,
-    a: 1
+    props
   }
 }
 
