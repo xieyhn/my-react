@@ -31,3 +31,22 @@ export function appendInitialChild(parent, child) {
 export function finalizeInitialChildren(domElement, type, props) {
   setInitialProperties(domElement, type, props)
 }
+
+/**
+ * 
+ * @param {HTMLElement} parentInstance 
+ * @param {HTMLElement} child 
+ */
+export function appendChild(parentInstance, child) {
+  parentInstance.appendChild(child)
+}
+
+/**
+ * 
+ * @param {HTMLElement} parentInstance 
+ * @param {HTMLElement} child 
+ * @param {HTMLElement} anchor 
+ */
+export function insertBefore(parentInstance, child, anchor) {
+  parentInstance.insertBefore(child, anchor)
+}

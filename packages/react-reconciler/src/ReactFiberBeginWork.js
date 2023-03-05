@@ -1,7 +1,8 @@
 import { shouldSetTextContent } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
 import { mountChildFibers, reconcileChildFibers } from './ReactChildFiber'
 import { processUpdateQueue } from './ReactFiberClassUpdateQueue'
-import { HostComponent, HostRoot, HostText } from './ReactWorkTags'
+import { renderWithHooks } from './ReactFiberHooks'
+import { FunctionComponent, HostComponent, HostRoot, HostText, IndeterminateComponent } from './ReactWorkTags'
 
 /**
  *
@@ -51,6 +52,19 @@ function updateHostComponent(current, workInProgress) {
 /**
  * @param {import('./ReactFiber').FiberNode} current
  * @param {import('./ReactFiber').FiberNode} workInProgress
+ * @param {(...args: any[]) => import('./ReactFiber').FiberNode} Component
+ */
+function mountIndeterminateComponent(current, workInProgress, Component) {
+  const props = workInProgress.pendingProps
+  const children = renderWithHooks(current, workInProgress, Component, props)
+  workInProgress.tag = FunctionComponent
+  reconcileChildren(current, workInProgress, children)
+  return workInProgress.child
+}
+
+/**
+ * @param {import('./ReactFiber').FiberNode} current
+ * @param {import('./ReactFiber').FiberNode} workInProgress
  */
 export function beginWork(current, workInProgress) {
   switch (workInProgress.tag) {
@@ -60,6 +74,8 @@ export function beginWork(current, workInProgress) {
       return updateHostComponent(current, workInProgress)
     case HostText:
       return null
+    case IndeterminateComponent:
+      return mountIndeterminateComponent(current, workInProgress, workInProgress.type)
     default:
       return null
   }

@@ -69,6 +69,7 @@ export function completeWork(current, workInProgress) {
 }
 
 /**
+ * 向上冒泡 flags
  * @param {import('./ReactFiber').FiberNode} completedWork
  */
 function bubbleProperties(completedWork) {
