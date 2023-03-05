@@ -10,9 +10,8 @@ export default defineConfig({
       'react-dom': path.resolve(__dirname, 'packages/react-dom'),
       'react-reconciler': path.resolve(__dirname, 'packages/react-reconciler'),
       scheduler: path.resolve(__dirname, 'packages/scheduler'),
+      'react-dom-bindings': path.resolve(__dirname, 'packages/react-dom-bindings')
     }
   },
-  plugins: [
-    react()
-  ]
+  plugins: [react()]
 })

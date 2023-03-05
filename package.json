@@ -5,10 +5,12 @@
   "author": "",
   "license": "ISC",
   "scripts": {
-    "dev": "vite --force"
+    "dev": "vite --force",
+    "prettier": "prettier . --write"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^3.1.0",
+    "prettier": "^2.8.4",
     "vite": "^4.1.4"
   }
 }

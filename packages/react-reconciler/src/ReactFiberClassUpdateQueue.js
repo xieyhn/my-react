@@ -28,7 +28,7 @@ export function enqueueUpdate(fiber, update) {
   const updateQueue = fiber.updateQueue
   const pending = updateQueue.pending
 
-  // 构建单项循环链表
+  // 构建单向循环链表
   if (!pending) {
     update.next = update
   } else {
@@ -70,7 +70,7 @@ export function processUpdateQueue(workInProgress) {
 }
 
 function getStateFromUpdate(update, prevState) {
-  switch(update.tag) {
+  switch (update.tag) {
     case UpdateState:
       const { payload } = update
       return assign({}, prevState, payload)

@@ -1,5 +1,6 @@
+import { isArray } from 'shared/isArray'
 import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols'
-import { createFiberFromElement } from './ReactFiber'
+import { createFiberFromElement, createFiberFromText } from './ReactFiber'
 import { Placement } from './ReactFiberFlags'
 
 /**
@@ -31,12 +32,81 @@ function createChildReconciler(shouldTrackSideEffects) {
 
   /**
    * @param {import('./ReactFiber').FiberNode} returnFiber 父 Fiber
+   * @param {*} newChild
+   */
+  function createChild(returnFiber, newChild) {
+    if ((typeof newChild === 'string' && newChild !== '') || typeof newChild === 'number') {
+      // 转换为字符串
+      const created = createFiberFromText(`${newChild}`)
+      created.returnFiber = returnFiber
+      return created
+    } else if (typeof newChild === 'object' && newChild !== null) {
+      switch (newChild.$$typeof) {
+        case REACT_ELEMENT_TYPE: {
+          const created = createFiberFromElement(newChild)
+          created.return = returnFiber
+          return created
+          break
+        }
+        default:
+          break
+      }
+    }
+    return null
+  }
+
+  /**
+   *
+   * @param {import('./ReactFiber').FiberNode} newFiber
+   * @param {number} newIndex
+   */
+  function placeChild(newFiber, newIndex) {
+    newFiber.index = newIndex
+
+    if (shouldTrackSideEffects) {
+      newFiber.flags |= Placement
+    }
+  }
+
+  /**
+   * @param {import('./ReactFiber').FiberNode} returnFiber 父 Fiber
+   * @param {import('./ReactFiber').FiberNode} currentFirstFiber current 第一个子 Fiber
+   * @param {any[]} newChildren 新的子虚拟 DOM
+   */
+  function reconcileChildrenArray(returnFiber, currentFirstFiber, newChildren) {
+    let newIndex = 0
+    // 记录第一个子节点
+    let resultingFirstChild = null
+    /**
+     * 用于辅助构建子节点的链接关系
+     * @type {import('./ReactFiber').FiberNode}
+     */
+    let previousNewFiber = null
+
+    for (; newIndex < newChildren.length; newIndex++) {
+      const newFiber = createChild(returnFiber, newChildren[newIndex])
+      if (!newFiber) continue
+      placeChild(newFiber, newIndex)
+      if (!previousNewFiber) {
+        resultingFirstChild = newFiber
+      } else {
+        previousNewFiber.sibling = newFiber
+      }
+      previousNewFiber = newFiber
+    }
+
+    return resultingFirstChild
+  }
+
+  /**
+   * @param {import('./ReactFiber').FiberNode} returnFiber 父 Fiber
    * @param {import('./ReactFiber').FiberNode} currentFirstFiber current 第一个子 Fiber
    * @param {*} newChild 新的子虚拟 DOM
    */
   function reconcilerChildFibers(returnFiber, currentFirstFiber, newChild) {
-    // TODO 暂时只考虑 newChild 是一个节点的情况
-    if (typeof newChild === 'object' && newChild !== null) {
+    if (isArray(newChild)) {
+      return reconcileChildrenArray(returnFiber, currentFirstFiber, newChild)
+    } else if (typeof newChild === 'object' && newChild !== null) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
           return placeSingleChild(reconcileSingleElement(returnFiber, currentFirstFiber, newChild))
@@ -45,6 +115,7 @@ function createChildReconciler(shouldTrackSideEffects) {
       }
     }
   }
+
   return reconcilerChildFibers
 }
 

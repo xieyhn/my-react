@@ -6,7 +6,8 @@
       "shared/*": ["packages/shared/*"],
       "react-dom/*": ["packages/react-dom/*"],
       "react-reconciler/*": ["packages/react-reconciler/*"],
-      "scheduler/*": ["packages/scheduler/*"]
+      "scheduler/*": ["packages/scheduler/*"],
+      "react-dom-bindings/*": ["packages/react-dom-bindings/*"]
     }
   }
 }

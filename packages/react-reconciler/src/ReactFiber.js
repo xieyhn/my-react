@@ -1,16 +1,16 @@
-import { HostComponent, HostRoot, IndeterminateComponent } from './ReactWorkTags'
+import { HostComponent, HostRoot, HostText, IndeterminateComponent } from './ReactWorkTags'
 import { NoFlags } from './ReactFiberFlags'
 
 /**
  * @param {*} tag
- * @param {*} paddingProps
- * @param {*} key 
+ * @param {*} pendingProps
+ * @param {*} key
  */
-export function FiberNode(tag, paddingProps, key) {
+export function FiberNode(tag, pendingProps, key) {
   this.tag = tag
   this.key = key
   this.type = null
-  // 指向真实 DOM？
+  // 指向真实 DOM 节点（根节点则指向 FiberRootNode）
   this.stateNode = null
 
   /**
@@ -28,19 +28,20 @@ export function FiberNode(tag, paddingProps, key) {
    * @type {FiberNode}
    */
   this.sibling = null
+  // 作为子节点时，自身所在的索引
   this.index = 0
 
   // 等待生效的 props
-  this.paddingProps = paddingProps
+  this.pendingProps = pendingProps
   // 已经生效的 props
   this.memoizedProps = null
   // ?
   this.memoizedState = null
   // ?
   this.updateQueue = null
-  // ?
+  // 副作用标识，标识自己的副作用，如需要新增、修改节点等
   this.flags = NoFlags
-  // ?
+  // 记录后代节点的副作用标识
   this.subtreeFlags = NoFlags
   /**
    * @type {FiberNode}
@@ -58,8 +59,8 @@ export function createHostRootFiber() {
 
 /**
  * 基于老 Fiber 和新属性来创建新的 Fiber
- * @param {FiberNode} current 
- * @param {*} pendingProps 
+ * @param {FiberNode} current
+ * @param {*} pendingProps
  */
 export function createWorkInProgress(current, pendingProps) {
   let workInProgress = current.alternate
@@ -102,4 +103,11 @@ function createFiberFromTypeAndProps(type, key, pendingProps) {
   const fiber = createFiber(tag, pendingProps, key)
   fiber.type = type
   return fiber
+}
+
+/**
+ * @param {string} content
+ */
+export function createFiberFromText(content) {
+  return createFiber(HostText, content, null)
 }

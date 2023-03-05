@@ -45,10 +45,7 @@ export function jsxDEV(type, config) {
   }
 
   for (let propName in config) {
-    if (
-      hasOwnProperty.call(config, propName) &&
-      !RESERVED_PROPS.hasOwnProperty(propName)
-    ) {
+    if (hasOwnProperty.call(config, propName) && !RESERVED_PROPS.hasOwnProperty(propName)) {
       props[propName] = config[propName]
     }
   }

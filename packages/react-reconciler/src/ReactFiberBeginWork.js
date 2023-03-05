@@ -1,3 +1,4 @@
+import { shouldSetTextContent } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
 import { mountChildFibers, reconcileChildFibers } from './ReactChildFiber'
 import { processUpdateQueue } from './ReactFiberClassUpdateQueue'
 import { HostComponent, HostRoot, HostText } from './ReactWorkTags'
@@ -29,11 +30,22 @@ function updateHostRoot(current, workInProgress) {
 }
 
 /**
+ * Handle 原生组件
  * @param {import('./ReactFiber').FiberNode} current
  * @param {import('./ReactFiber').FiberNode} workInProgress
  */
 function updateHostComponent(current, workInProgress) {
-  return null
+  const { type } = workInProgress
+  const nextProps = workInProgress.pendingProps
+  let nextChildren = nextProps.children
+
+  // 当仅有一个文本子节点时，做优化，不创建这个子节点
+  const isDirectTextChild = shouldSetTextContent(type, nextProps)
+  if (isDirectTextChild) {
+    nextChildren = null
+  }
+  reconcileChildren(current, workInProgress, nextChildren)
+  return workInProgress.child
 }
 
 /**
