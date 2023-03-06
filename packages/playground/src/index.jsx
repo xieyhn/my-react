@@ -1,27 +1,19 @@
 import { createRoot } from 'react-dom/src/client/ReactDOMRoot'
-
-// const element = (
-//   <h1 id="container">
-//     Hello <span style={{ color: 'red' }}>red</span> React
-//   </h1>
-// )
+import { useReducer } from 'react/src/index'
 
 function MyComponent() {
+  const [number, dispatch] = useReducer(action => {
+    switch (action.type) {
+      case 'add':
+        return number + 1
+      default:
+        return number
+    }
+  }, 0)
+
   return (
-    <h1
-      id="container"
-      onClick={(event) => console.log('父冒泡', event)}
-      onClickCapture={(event) => console.log('父捕获', event)}
-    >
-      Hello{' '}
-      <span
-        style={{ color: 'red' }}
-        onClick={(event) => console.log('子冒泡', event)}
-        onClickCapture={(event) => console.log('子捕获', event)}
-      >
-        red
-      </span>{' '}
-      React
+    <h1 id="container" onClick={() => dispatch({ type: 'add' })}>
+      Hello React <span>{number}</span>
     </h1>
   )
 }

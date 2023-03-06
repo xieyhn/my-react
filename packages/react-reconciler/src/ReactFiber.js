@@ -35,7 +35,9 @@ export function FiberNode(tag, pendingProps, key) {
   this.pendingProps = pendingProps
   // 已经生效的 props
   this.memoizedProps = null
-  // ?
+  // 因 fiber 的类型不同而不同
+  // 如 HostRoot 存放的是 { element } 虚拟 DOM
+  // FunctionComponent 存放的是 hook 链表
   this.memoizedState = null
   // ?
   this.updateQueue = null
