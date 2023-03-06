@@ -20,8 +20,7 @@ function appendAllChildren(parent, workInProgress) {
       // 通过 DOM API 插入节点
       appendInitialChild(parent, node.stateNode)
     } else if (node.child) {
-      // 虽不是原生节点，但可能是组件等，这里为什么等于 child 还要考证组件的 Fiber 结构？？？ TODO
-      // 继续处理函数组件的 child （组件不认为是子节点，继续向下找它的 child）
+      // 虽不是原生节点，但可能是组件等，继续处理函数组件的 child 
       node = node.child
       continue
     }
