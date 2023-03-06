@@ -17,7 +17,7 @@ function setInitialDOMProperties(type, domElement, nextProps) {
       if (key === STYLE) {
         setValueForStyles(domElement, value)
       } else if (key === CHILDREN) {
-        if (typeof value === 'string') {
+        if (typeof value === 'string' || typeof value === 'number') {
           // 唯一的文本节点会被放置在 children 中
           setTextContent(domElement, value)
         }
