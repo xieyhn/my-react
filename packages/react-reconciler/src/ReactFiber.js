@@ -79,6 +79,7 @@ export function createWorkInProgress(current, pendingProps) {
     workInProgress.flags = NoFlags
     workInProgress.subtreeFlags = NoFlags
   }
+  
   workInProgress.child = current.child
   workInProgress.memoizedProps = current.memoizedProps
   workInProgress.memoizedState = current.memoizedState

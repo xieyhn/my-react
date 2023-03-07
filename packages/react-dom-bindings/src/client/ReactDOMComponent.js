@@ -30,9 +30,19 @@ function setInitialDOMProperties(type, domElement, nextProps) {
 
 /**
  * @param {HTMLElement} domElement
- * @param {string} tag
+ * @param {string} type
  * @param {*} props
  */
-export function setInitialProperties(domElement, tag, props) {
-  setInitialDOMProperties(tag, domElement, props)
+export function setInitialProperties(domElement, type, props) {
+  setInitialDOMProperties(type, domElement, props)
+}
+
+/**
+ * @param {HTMLElement} domElement
+ * @param {*} type
+ * @param {*} oldProps
+ * @param {*} newProps
+ */
+export function diffProperties(domElement, type, oldProps, newProps) {
+  // TODO
 }

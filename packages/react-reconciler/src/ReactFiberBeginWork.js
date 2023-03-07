@@ -65,6 +65,17 @@ function mountIndeterminateComponent(current, workInProgress, Component) {
 /**
  * @param {import('./ReactFiber').FiberNode} current
  * @param {import('./ReactFiber').FiberNode} workInProgress
+ * @param {(...args: any[]) => import('./ReactFiber').FiberNode} Component
+ */
+function updateFunctionComponent(current, workInProgress, Component, nextProps) {
+  const nextChildren = renderWithHooks(current, workInProgress, Component, nextProps)
+  reconcileChildren(current, workInProgress, nextChildren)
+  return workInProgress.child
+}
+
+/**
+ * @param {import('./ReactFiber').FiberNode} current
+ * @param {import('./ReactFiber').FiberNode} workInProgress
  */
 export function beginWork(current, workInProgress) {
   switch (workInProgress.tag) {
@@ -76,6 +87,10 @@ export function beginWork(current, workInProgress) {
       return null
     case IndeterminateComponent:
       return mountIndeterminateComponent(current, workInProgress, workInProgress.type)
+    case FunctionComponent:
+      const Component = workInProgress.type
+      const nextProps = workInProgress.pendingProps
+      return updateFunctionComponent(current, workInProgress, Component, nextProps)
     default:
       return null
   }

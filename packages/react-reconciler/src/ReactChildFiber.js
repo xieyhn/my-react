@@ -1,6 +1,6 @@
 import { isArray } from 'shared/isArray'
 import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols'
-import { createFiberFromElement, createFiberFromText } from './ReactFiber'
+import { createFiberFromElement, createFiberFromText, createWorkInProgress } from './ReactFiber'
 import { Placement } from './ReactFiberFlags'
 
 /**
@@ -8,12 +8,34 @@ import { Placement } from './ReactFiberFlags'
  */
 function createChildReconciler(shouldTrackSideEffects) {
   /**
-   * @param {import('./ReactFiber').FiberNode} returnFiber
-   * @param {import('./ReactFiber').FiberNode} currentFirstFiber
-   * @param {*} element
+   * @param {import('./ReactFiber').FiberNode} fiber 
+   * @param {*} pendingProps 
    */
-  function reconcileSingleElement(returnFiber, currentFirstFiber, element) {
-    // TODO 暂时考虑是初次挂载，直接创建新的 Fiber 节点
+  function useFiber(fiber, pendingProps) {
+    const clone = createWorkInProgress(fiber, pendingProps)
+    clone.index = 0
+    clone.sibling = null
+    return clone
+  }
+  /**
+   * @param {import('./ReactFiber').FiberNode} returnFiber
+   * @param {import('./ReactFiber').FiberNode} currentFirstChild
+   * @param {ReturnType<import('react/src/jsx/ReactJSXElement').ReactElement>} element
+   */
+  function reconcileSingleElement(returnFiber, currentFirstChild, element) {
+    let child = currentFirstChild
+
+    while(child) {
+      if (child.key === element.key) {
+        if (child.type === element.type) {
+          const existing = useFiber(child, element.props)
+          existing.return = returnFiber
+          return existing
+        }
+      }
+      child = child.sibling
+    }
+
     const created = createFiberFromElement(element)
     created.return = returnFiber
     return created
@@ -24,7 +46,7 @@ function createChildReconciler(shouldTrackSideEffects) {
    * @param {import('./ReactFiber').FiberNode} newFiber
    */
   function placeSingleChild(newFiber) {
-    if (shouldTrackSideEffects) {
+    if (shouldTrackSideEffects && !newFiber.alternate) {
       newFiber.flags |= Placement
     }
     return newFiber
@@ -69,10 +91,10 @@ function createChildReconciler(shouldTrackSideEffects) {
 
   /**
    * @param {import('./ReactFiber').FiberNode} returnFiber 父 Fiber
-   * @param {import('./ReactFiber').FiberNode} currentFirstFiber current 第一个子 Fiber
+   * @param {import('./ReactFiber').FiberNode} currentFirstChild current 第一个子 Fiber
    * @param {any[]} newChildren 新的子虚拟 DOM
    */
-  function reconcileChildrenArray(returnFiber, currentFirstFiber, newChildren) {
+  function reconcileChildrenArray(returnFiber, currentFirstChild, newChildren) {
     let newIndex = 0
     // 记录第一个子节点
     let resultingFirstChild = null
@@ -99,16 +121,16 @@ function createChildReconciler(shouldTrackSideEffects) {
 
   /**
    * @param {import('./ReactFiber').FiberNode} returnFiber 父 Fiber
-   * @param {import('./ReactFiber').FiberNode} currentFirstFiber current 第一个子 Fiber
+   * @param {import('./ReactFiber').FiberNode} currentFirstChild current 第一个子 Fiber
    * @param {*} newChild 新的子虚拟 DOM
    */
-  function reconcilerChildFibers(returnFiber, currentFirstFiber, newChild) {
+  function reconcilerChildFibers(returnFiber, currentFirstChild, newChild) {
     if (isArray(newChild)) {
-      return reconcileChildrenArray(returnFiber, currentFirstFiber, newChild)
+      return reconcileChildrenArray(returnFiber, currentFirstChild, newChild)
     } else if (typeof newChild === 'object' && newChild !== null) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
-          return placeSingleChild(reconcileSingleElement(returnFiber, currentFirstFiber, newChild))
+          return placeSingleChild(reconcileSingleElement(returnFiber, currentFirstChild, newChild))
         default:
           break
       }

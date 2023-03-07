@@ -2,9 +2,10 @@ import {
   appendInitialChild,
   createInstance,
   createTextInstance,
-  finalizeInitialChildren
+  finalizeInitialChildren,
+  prepareUpdate
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
-import { NoFlags } from './ReactFiberFlags'
+import { NoFlags, Update } from './ReactFiberFlags'
 import { HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /**
@@ -20,7 +21,7 @@ function appendAllChildren(parent, workInProgress) {
       // 通过 DOM API 插入节点
       appendInitialChild(parent, node.stateNode)
     } else if (node.child) {
-      // 虽不是原生节点，但可能是组件等，继续处理函数组件的 child 
+      // 虽不是原生节点，但可能是组件等，继续处理函数组件的 child
       node = node.child
       continue
     }
@@ -39,6 +40,32 @@ function appendAllChildren(parent, workInProgress) {
 }
 
 /**
+ * @param {import('./ReactFiber').FiberNode} workInProgress 
+ */
+function markUpdate(workInProgress) {
+  workInProgress.flags |= Update
+}
+
+/**
+ * @param {import('./ReactFiber').FiberNode} current 
+ * @param {import('./ReactFiber').FiberNode} workInProgress 
+ * @param {*} type 
+ * @param {*} newProps 
+ */
+function updateHostComponent(current, workInProgress, type, newProps) {
+  const oldProps = current.memoizedProps
+  const instance = workInProgress.stateNode
+  const updatePayload = prepareUpdate(instance, type, oldProps, newProps)
+  workInProgress.updateQueue = updatePayload
+
+  if (updatePayload) {
+    markUpdate(workInProgress)
+  }
+
+  debugger
+}
+
+/**
  * @param {import('./ReactFiber').FiberNode} current
  * @param {import('./ReactFiber').FiberNode} workInProgress
  */
@@ -53,12 +80,17 @@ export function completeWork(current, workInProgress) {
       bubbleProperties(workInProgress)
       break
     case HostComponent:
-      // TODO 暂时只是在处理新节点的逻辑
-      const instance = createInstance(type, newProps, workInProgress)
-      workInProgress.stateNode = instance
-      // 第一次挂载阶段，直接将子节点挂载自己身上，不用更新啥的
-      appendAllChildren(instance, workInProgress)
-      finalizeInitialChildren(instance, type, newProps)
+      if (current && workInProgress.stateNode) {
+        // update
+        updateHostComponent(current, workInProgress, type, newProps)
+      } else {
+        // create
+        const instance = createInstance(type, newProps, workInProgress)
+        workInProgress.stateNode = instance
+        // 第一次挂载阶段，直接将子节点挂载自己身上，不用更新啥的
+        appendAllChildren(instance, workInProgress)
+        finalizeInitialChildren(instance, type, newProps)
+      }
       bubbleProperties(workInProgress)
       break
     case HostRoot:

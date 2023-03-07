@@ -45,11 +45,20 @@ export function appendChild(parentInstance, child) {
 }
 
 /**
- * 
  * @param {HTMLElement} parentInstance 
  * @param {HTMLElement} child 
  * @param {HTMLElement} anchor 
  */
 export function insertBefore(parentInstance, child, anchor) {
   parentInstance.insertBefore(child, anchor)
+}
+
+/**
+ * @param {HTMLElement} domElement 
+ * @param {*} type 
+ * @param {*} oldProps 
+ * @param {*} newProps 
+ */
+export function prepareUpdate(domElement, type, oldProps, newProps) {
+  return diffProperties(domElement, type, oldProps, newProps)
 }
