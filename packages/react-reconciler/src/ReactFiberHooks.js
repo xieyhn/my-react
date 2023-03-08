@@ -123,5 +123,6 @@ export function renderWithHooks(current, workInProgress, Component, props) {
   const children = Component(props)
   currentlyRenderingFiber = null
   workInProgressHook = null
+  currentHook = null
   return children
 }

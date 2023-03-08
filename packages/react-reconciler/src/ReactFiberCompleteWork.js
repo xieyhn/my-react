@@ -6,7 +6,7 @@ import {
   prepareUpdate
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
 import { NoFlags, Update } from './ReactFiberFlags'
-import { HostComponent, HostRoot, HostText } from './ReactWorkTags'
+import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /**
  * 将所有的直接子节点添加在自己身上（后代节点会通过 completeWork 会一层一层往上添加)，因此这里只需要处理直接子节点
@@ -58,11 +58,9 @@ function updateHostComponent(current, workInProgress, type, newProps) {
   const updatePayload = prepareUpdate(instance, type, oldProps, newProps)
   workInProgress.updateQueue = updatePayload
 
-  if (updatePayload) {
+  if (updatePayload && updatePayload.length) {
     markUpdate(workInProgress)
   }
-
-  debugger
 }
 
 /**
@@ -93,6 +91,9 @@ export function completeWork(current, workInProgress) {
       }
       bubbleProperties(workInProgress)
       break
+    case FunctionComponent:
+      bubbleProperties(workInProgress)
+      break
     case HostRoot:
       bubbleProperties(workInProgress)
       break
@@ -100,7 +101,6 @@ export function completeWork(current, workInProgress) {
 }
 
 /**
- * 向上冒泡 flags
  * @param {import('./ReactFiber').FiberNode} completedWork
  */
 function bubbleProperties(completedWork) {
