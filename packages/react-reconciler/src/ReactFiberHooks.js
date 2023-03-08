@@ -14,16 +14,25 @@ let workInProgressHook = null
 let currentHook = null
 
 const HooksDispatcherOnMount = {
-  useReducer: mountReducer
+  useReducer: mountReducer,
+  useState: mountState
 }
 
 const HooksDispatcherOnUpdate = {
-  useReducer: updateReducer
+  useReducer: updateReducer,
+  useState: updateState
 }
 
-function mountReducer(reducer, initialArg) {
+function baseStateReducer(state, action) {
+  if (typeof action === 'function') {
+    return action(state)
+  }
+  return action
+}
+
+function mountReducer(reducer, initialState) {
   const hook = mountWorkInProgressHook()
-  hook.memoizedState = initialArg
+  hook.memoizedState = initialState
   const queue = {
     pending: null,
     dispatch: null
@@ -45,8 +54,11 @@ function updateReducer(reducer) {
     const firstUpdate = pendingQueue.next
     let update = firstUpdate
     do {
-      const action = update.action
-      newState = reducer(newState, action)
+      if (update.hasEagerState) {
+        newState = update.eagerState
+      } else {
+        newState = reducer(newState, update.action)
+      }
       update = update.next
     } while (update && update !== firstUpdate)
   }
@@ -56,7 +68,6 @@ function updateReducer(reducer) {
 }
 
 /**
- * 更新状态，让界面重新更新
  * @param {import('./ReactFiber').FiberNode} fiber
  * @param {*} queue
  * @param {*} action
@@ -65,6 +76,49 @@ function dispatchReducerAction(fiber, queue, action) {
   const update = {
     action,
     next: null
+  }
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update)
+  scheduleUpdateOnFiber(root)
+}
+
+function mountState(initialState) {
+  const hook = mountWorkInProgressHook()
+  hook.memoizedState = initialState
+  const queue = {
+    pending: null,
+    dispatch: null,
+    lastRenderedReducer: baseStateReducer,
+    lastRenderedState: initialState
+  }
+  hook.queue = queue
+  const dispatch = queue.dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue)
+  return [hook.memoizedState, dispatch]
+}
+
+function updateState() {
+  return updateReducer(baseStateReducer)
+}
+
+/**
+ * @param {import('./ReactFiber').FiberNode} fiber
+ * @param {*} queue
+ * @param {*} action
+ */
+function dispatchSetState(fiber, queue, action) {
+  const update = {
+    action,
+    // 是否有急切的更新状态，在 useState 中，如果新旧两个值相同，不会进行页面更新，因此这里会同步计算新值并保存
+    hasEagerState: false,
+    eagerState: null,
+    next: null,
+  }
+  const { lastRenderedReducer, lastRenderedState } = queue
+  const eagerState = lastRenderedReducer(lastRenderedState, action)
+  update.hasEagerState = true
+  update.eagerState = eagerState
+  if (Object.is(eagerState, lastRenderedState)) {
+    // useState 优化，在新旧值相同的情况下，不会进入更新
+    return
   }
   const root = enqueueConcurrentHookUpdate(fiber, queue, update)
   scheduleUpdateOnFiber(root)

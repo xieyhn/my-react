@@ -5,7 +5,7 @@ import { commitMutationEffectsOnFiber } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates'
 import { MutationMask, Placement, Update } from './ReactFiberFlags'
-import { HostComponent, HostRoot, HostText } from './ReactWorkTags'
+import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /** @type {import('./ReactFiber').FiberNode} */
 let workInProgress = null
@@ -129,7 +129,7 @@ function printFinishedWork(fiber) {
     child = child.sibling
   }
   if (fiber.flags !== 0) {
-    console.log(getFlags(fiber.flags), getTag(fiber.tag), fiber.type, fiber.memoizedProps)
+    console.log(getFlags(fiber.flags), getTag(fiber.tag), getType(fiber.type), fiber.memoizedProps)
   }
 }
 
@@ -150,7 +150,13 @@ function getTag(tag) {
       return 'HostComponent'
     case HostText:
       return 'HostText'
+    case FunctionComponent:
+      return 'FunctionComponent'
     default:
       return tag
   }
+}
+
+function getType(type) {
+  return typeof type === 'function' ? type.name : type
 }

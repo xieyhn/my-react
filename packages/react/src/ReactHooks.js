@@ -4,7 +4,12 @@ function resolveDispatcher() {
   return ReactCurrentDispatcher.current
 }
 
-export function useReducer(reducer, initialArg) {
+export function useReducer(reducer, initialState) {
   const dispatcher = resolveDispatcher()
-  return dispatcher.useReducer(reducer, initialArg)
+  return dispatcher.useReducer(reducer, initialState)
+}
+
+export function useState(initialState) {
+  const dispatcher = resolveDispatcher()
+  return dispatcher.useState(initialState)
 }

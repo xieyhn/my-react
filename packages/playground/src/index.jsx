@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/src/client/ReactDOMRoot'
-import { useReducer } from 'react/src/index'
+import { useReducer, useState } from 'react/src/index'
 
 const reducer = (n, action) => {
   switch (action.type) {
@@ -20,15 +20,16 @@ function MyComponent() {
   }
   flag = true
   const [number1, dispatch1] = useReducer(reducer, 1)
+  const [number2, setNumber2] = useState(100)
 
   const handleClick1 = () => {
-    debugger
-    dispatch1({ type: 'add' })
+    // dispatch1({ type: 'add' })
+    setNumber2(number2 + 1)
   }
 
   return (
     <button onClick={handleClick1}>
-      <span {...attrs}>{ number1 }</span>
+      <span {...attrs}>{number2}</span>
     </button>
   )
 }
