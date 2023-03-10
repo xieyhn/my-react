@@ -6,11 +6,19 @@
   "license": "ISC",
   "scripts": {
     "dev": "vite --force",
-    "prettier": "prettier . --write"
+    "prettier": "prettier . --write",
+    "postinstall": "husky install"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^3.1.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.0",
     "prettier": "^2.8.4",
     "vite": "^4.1.4"
+  },
+  "lint-staged": {
+    "*.{js,jsx,vue,json}": [
+      "prettier --write"
+    ]
   }
 }
