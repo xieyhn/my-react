@@ -4,7 +4,7 @@ import { beginWork } from './ReactFiberBeginWork'
 import { commitMutationEffectsOnFiber } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates'
-import { MutationMask, Placement, Update } from './ReactFiberFlags'
+import { ChildDeletion, MutationMask, Placement, Update } from './ReactFiberFlags'
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /** @type {import('./ReactFiber').FiberNode} */
@@ -138,6 +138,8 @@ function getFlags(flags) {
     return '插入'
   } else if (flags === Update) {
     return '更新'
+  } else if (flags === ChildDeletion) {
+    return '子节点有删除'
   }
   return flags
 }

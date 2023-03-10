@@ -1,36 +1,19 @@
 import { createRoot } from 'react-dom/src/client/ReactDOMRoot'
 import { useReducer, useState } from 'react/src/index'
 
-const reducer = (n, action) => {
-  switch (action.type) {
-    case 'add':
-      return n + 1
-    default:
-      return n
-  }
-}
-
-let flag = false
-
 function MyComponent() {
-  const attrs = { foo: 'bar', style: { color: 'red', fontSize: 24 } }
-  if (flag) {
-    delete attrs.foo
-    attrs.style = { color: 'blue' }
-  }
-  flag = true
-  const [number1, dispatch1] = useReducer(reducer, 1)
-  const [number2, setNumber2] = useState(100)
+  const [flag, setFlag] = useState(true)
 
-  const handleClick1 = () => {
-    // dispatch1({ type: 'add' })
-    setNumber2(number2 + 1)
-  }
-
-  return (
-    <button onClick={handleClick1}>
-      <span {...attrs}>{number2}</span>
-    </button>
+  return flag ? (
+    <ul key="container" onClick={() => setFlag(false)}>
+      <li key="A">A</li>
+      <li key="B">B</li>
+      <li key="C">C</li>
+    </ul>
+  ) : (
+    <ul key="container">
+      <li key="B">B</li>
+    </ul>
   )
 }
 

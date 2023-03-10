@@ -1,12 +1,87 @@
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 import { MutationMask, Placement, Update } from './ReactFiberFlags'
-import { appendChild, commitUpdate, insertBefore } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
+import {
+  appendChild,
+  commitUpdate,
+  insertBefore,
+  removeChild
+} from 'react-dom-bindings/src/client/ReactDOMHostConfig'
+
+/**
+ * @type {HTMLElement | null}
+ */
+let hostParent = null
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} finishedRoot
+ * @param {import('./ReactFiber').FiberNode} nearestMountedAncestor
+ * @param {import('./ReactFiber').FiberNode} parent
+ */
+function recursivelyTraverseDeletionEffects(finishedRoot, nearestMountedAncestor, parent) {
+  let child = parent.child
+  while(child) {
+    commitDeletionEffectsOnFiber(finishedRoot, nearestMountedAncestor, child)
+    child = child.sibling
+  }
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} finishedRoot
+ * @param {import('./ReactFiber').FiberNode} nearestMountedAncestor
+ * @param {import('./ReactFiber').FiberNode} deletedFiber
+ */
+function commitDeletionEffectsOnFiber(finishedRoot, nearestMountedAncestor, deletedFiber) {
+  switch (deletedFiber.tag) {
+    case HostComponent:
+    case HostText:
+      // 递归删除子节点（这里需要一层一层处理子节点的删除逻辑，如和生命周期相关等）
+      recursivelyTraverseDeletionEffects(finishedRoot, nearestMountedAncestor, deletedFiber)
+      if (hostParent) {
+        removeChild(hostParent, deletedFiber.stateNode)
+      }
+      break
+    default:
+      break
+  }
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {import('./ReactFiber').FiberNode} returnFiber
+ * @param {import('./ReactFiber').FiberNode} deletedFiber
+ */
+function commitDeletionEffects(root, returnFiber, deletedFiber) {
+  let parent = returnFiber
+
+  findParent: while (parent) {
+    switch (parent.tag) {
+      case HostComponent:
+        hostParent = parent.stateNode
+        break findParent
+      case HostRoot:
+        hostParent = parent.stateNode.containerInfo
+        break findParent
+    }
+    parent = parent.return
+  }
+
+  commitDeletionEffectsOnFiber(root, returnFiber, deletedFiber)
+  hostParent = null
+}
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  * @param {import('./ReactFiber').FiberNode} parentFiber
  */
 function recursivelyTraverseMutationEffects(root, parentFiber) {
+  // 处理需要移除的子节点
+  const deletions = parentFiber.deletions
+  if (deletions) {
+    deletions.forEach(child => {
+      commitDeletionEffects(root, parentFiber, child)
+    })
+  }
+
   if (parentFiber.subtreeFlags & MutationMask) {
     let { child } = parentFiber
     while (child) {
@@ -164,7 +239,14 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
           const updatePayload = finishedWork.updateQueue
           finishedWork.updateQueue = null
           if (updatePayload) {
-            commitUpdate(instance, updatePayload, finishedWork.type, oldProps, newProps, finishedWork)
+            commitUpdate(
+              instance,
+              updatePayload,
+              finishedWork.type,
+              oldProps,
+              newProps,
+              finishedWork
+            )
           }
         }
       }

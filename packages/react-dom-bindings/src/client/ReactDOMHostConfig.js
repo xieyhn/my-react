@@ -75,3 +75,11 @@ export function commitUpdate(domElement, updatePayload, type, oldProps, newProps
   updateProperties(domElement, updatePayload)
   updateFiberProps(domElement, newProps)
 }
+
+/**
+ * @param {HTMLElement} parent 
+ * @param {HTMLElement} child 
+ */
+export function removeChild(parent, child) {
+  parent.removeChild(child)
+}

@@ -29,11 +29,16 @@ export function ReactElement(type, key, ref, props) {
 /**
  * @param {string} type
  * @param {Record<string, any>} config
+ * @param {string | undefined} maybeKey
  */
-export function jsxDEV(type, config) {
+export function jsxDEV(type, config, maybeKey) {
   const props = {}
   let key = null
   let ref = null
+
+  if (typeof maybeKey !== 'undefined') {
+    key = maybeKey
+  }
 
   if (hasValidKey(config)) {
     key = config.key

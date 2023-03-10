@@ -49,6 +49,11 @@ export function FiberNode(tag, pendingProps, key) {
    * @type {FiberNode}
    */
   this.alternate = null
+  /**
+   * 记录将要删除的子节点列表
+   * @type {FiberNode[] | null}
+   */
+  this.deletions = null
 }
 
 export function createFiber(tag, paddingProps, key) {
