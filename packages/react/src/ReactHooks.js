@@ -13,3 +13,8 @@ export function useState(initialState) {
   const dispatcher = resolveDispatcher()
   return dispatcher.useState(initialState)
 }
+
+export function useEffect(create) {
+  const dispatcher = resolveDispatcher()
+  dispatcher.useEffect(create)
+}

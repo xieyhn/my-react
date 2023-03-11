@@ -1,16 +1,21 @@
 import { schedulerCallback } from 'scheduler/index'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
-import { commitMutationEffectsOnFiber } from './ReactFiberCommitWork'
+import { commitMutationEffectsOnFiber, commitPassiveMountEffect, commitPassiveUnmountEffect } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates'
-import { ChildDeletion, MutationMask, Placement, Update } from './ReactFiberFlags'
+import { ChildDeletion, MutationMask, NoFlags, Passive, Placement, Update } from './ReactFiberFlags'
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /** @type {import('./ReactFiber').FiberNode} */
 let workInProgress = null
 /** @type {import('./ReactFiberRoot').FiberRootNode} */
 let workInProgressRoot = null
+/**
+ * 记录根节点 fiber 有没有类似 useEffect 的副作用
+ */
+let rootDoesHavePassiveEffect = false
+let rootWithPendingPassiveEffects = null
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
@@ -42,18 +47,36 @@ function performConcurrentWorkOnRoot(root) {
   workInProgressRoot = null
 }
 
+function flushPassiveEffect() {
+  if (rootWithPendingPassiveEffects) {
+    const root = rootWithPendingPassiveEffects
+    commitPassiveUnmountEffect(root.current)
+    commitPassiveMountEffect(root, root.current)
+  }
+}
+
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
 function commitRoot(root) {
   const { finishedWork } = root
+  if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
+    if (!rootDoesHavePassiveEffect) {
+      rootDoesHavePassiveEffect = true
+      schedulerCallback(flushPassiveEffect)
+    }
+  }
+
   const rootHasEffect = finishedWork.flags & MutationMask
   const subtreeHasEffects = finishedWork.subtreeFlags & MutationMask
 
   if (rootHasEffect || subtreeHasEffects) {
     commitMutationEffectsOnFiber(finishedWork, root)
+    if (rootDoesHavePassiveEffect) {
+      rootDoesHavePassiveEffect = false
+      rootWithPendingPassiveEffects = root
+    }
   }
-
   root.current = finishedWork
 }
 
@@ -119,12 +142,12 @@ function completeUnitWork(unitOfWork) {
 }
 
 /**
- * 
- * @param {import('./ReactFiber').FiberNode} fiber 
+ *
+ * @param {import('./ReactFiber').FiberNode} fiber
  */
 function printFinishedWork(fiber) {
   let child = fiber.child
-  while(child) {
+  while (child) {
     printFinishedWork(child)
     child = child.sibling
   }
@@ -152,7 +175,7 @@ function getFlags(flags) {
 }
 
 function getTag(tag) {
-  switch(tag) {
+  switch (tag) {
     case HostRoot:
       return 'HostRoot'
     case HostComponent:

@@ -1,11 +1,12 @@
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
-import { MutationMask, Placement, Update } from './ReactFiberFlags'
+import { MutationMask, Passive, Placement, Update } from './ReactFiberFlags'
 import {
   appendChild,
   commitUpdate,
   insertBefore,
   removeChild
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
+import { HasEffect as HookHasEffect, Passive as HookPassive } from './ReactHookEffectTags'
 
 /**
  * @type {HTMLElement | null}
@@ -255,4 +256,133 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
     default:
       break
   }
+}
+
+/**
+ * @param {{import('./ReactFiber').FiberNode}} parentFiber 
+ */
+function recursivelyTraversePassiveUnmountEffects(parentFiber) {
+  if (parentFiber.subtreeFlags & Passive) {
+    let child = parentFiber.child
+    while(child) {
+      commitPassiveUnmountOnFiber(child)
+      child = child.sibling
+    }
+  }
+}
+
+function commitHookEffectListUnmount(flags, finishedWork) {
+  const updateQueue = finishedWork.updateQueue
+  const lastEffect = updateQueue?.lastEffect
+  if (lastEffect) {
+    const firstEffect = lastEffect.next
+    let effect = firstEffect
+    do {
+      if ((effect.tag & flags) === flags) {
+        const destroy = effect.destroy
+        if (destroy) {
+          destroy()
+        }
+      }
+      effect = effect.next
+      // 这是一个循环链表，因此这样做循环退出条件
+    } while(effect !== firstEffect)
+  }
+}
+
+function commitHookPassiveUnmountEffects(finishedWork, hookFlags) {
+  commitHookEffectListUnmount(hookFlags, finishedWork)
+}
+
+function commitPassiveUnmountOnFiber(finishedWork) {
+  const flags = finishedWork.flags
+  switch(finishedWork.tag) {
+    case HostRoot:
+      recursivelyTraversePassiveUnmountEffects(finishedWork)
+      break
+    case FunctionComponent:
+      recursivelyTraversePassiveUnmountEffects(finishedWork)
+      if (flags & Passive) {
+        commitHookPassiveUnmountEffects(finishedWork, HookPassive | HookHasEffect)
+      }
+      break
+    default:
+      break
+  }
+}
+
+export function commitPassiveUnmountEffect(finishedWork) {
+  commitPassiveUnmountOnFiber(finishedWork)
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root 
+ * @param {{import('./ReactFiber').FiberNode}} parentFiber 
+ */
+function recursivelyTraversePassiveMountEffects(root, parentFiber) {
+  if (parentFiber.subtreeFlags & Passive) {
+    let child = parentFiber.child
+    while(child) {
+      commitPassiveMountOnFiber(root, child)
+      child = child.sibling
+    }
+  }
+}
+
+/**
+ * @param {number} flags 
+ * @param {import('./ReactFiber').FiberNode} finishedWork 
+ */
+function commitHookEffectListMount(flags, finishedWork) {
+  const updateQueue = finishedWork.updateQueue
+  const lastEffect = updateQueue?.lastEffect
+  if (lastEffect) {
+    const firstEffect = lastEffect.next
+    let effect = firstEffect
+    do {
+      if ((effect.tag & flags) === flags) {
+        const create = effect.create
+        effect.destroy = create()
+      }
+      effect = effect.next
+      // 这是一个循环链表，因此这样做循环退出条件
+    } while(effect !== firstEffect)
+  }
+}
+
+/**
+ * @param {{import('./ReactFiber').FiberNode} finishedWork 
+ * @param {number} hookFlags 
+ */
+function commitHookPassiveMountEffects(finishedWork, hookFlags) {
+  commitHookEffectListMount(hookFlags, finishedWork)
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} finishedRoot
+ * @param {import('./ReactFiber').FiberNode} finishedWork 
+ */
+function commitPassiveMountOnFiber(finishedRoot, finishedWork) {
+  const flags = finishedWork.flags
+  switch(finishedWork.tag) {
+    case HostRoot:
+      recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork)
+      break
+    case FunctionComponent:
+      recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork)
+      if (flags & Passive) {
+        commitHookPassiveMountEffects(finishedWork, HookPassive | HookHasEffect)
+      }
+      break
+    default:
+      break
+  }
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {import('./ReactFiber').FiberNode} finishedWork 
+ */
+export function commitPassiveMountEffect(root, finishedWork) {
+  commitPassiveMountOnFiber(root, finishedWork)
 }

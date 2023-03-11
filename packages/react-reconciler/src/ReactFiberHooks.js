@@ -1,6 +1,8 @@
 import ReactSharedInternals from 'shared/ReactSharedInternals'
 import { enqueueConcurrentHookUpdate } from './ReactFiberConcurrentUpdates'
 import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
+import { Passive as PassiveEffect } from './ReactFiberFlags'
+import { HasEffect as HookHasEffect, Passive as HookPassive } from './ReactHookEffectTags'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 /**
@@ -15,12 +17,14 @@ let currentHook = null
 
 const HooksDispatcherOnMount = {
   useReducer: mountReducer,
-  useState: mountState
+  useState: mountState,
+  useEffect: mountEffect
 }
 
 const HooksDispatcherOnUpdate = {
   useReducer: updateReducer,
-  useState: updateState
+  useState: updateState,
+  useEffect: updateEffect
 }
 
 function baseStateReducer(state, action) {
@@ -91,7 +95,7 @@ function mountState(initialState) {
     lastRenderedState: initialState
   }
   hook.queue = queue
-  const dispatch = queue.dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue)
+  const dispatch = (queue.dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue))
   return [hook.memoizedState, dispatch]
 }
 
@@ -110,7 +114,7 @@ function dispatchSetState(fiber, queue, action) {
     // 是否有急切的更新状态，在 useState 中，如果新旧两个值相同，不会进行页面更新，因此这里会同步计算新值并保存
     hasEagerState: false,
     eagerState: null,
-    next: null,
+    next: null
   }
   const { lastRenderedReducer, lastRenderedState } = queue
   const eagerState = lastRenderedReducer(lastRenderedState, action)
@@ -122,6 +126,104 @@ function dispatchSetState(fiber, queue, action) {
   }
   const root = enqueueConcurrentHookUpdate(fiber, queue, update)
   scheduleUpdateOnFiber(root)
+}
+
+/**
+ * @param {() => (void | () => void)} create
+ * @param {any[]} deps
+ */
+function mountEffect(create, deps) {
+  return mountEffectImpl(PassiveEffect, HookPassive, create, deps)
+}
+
+function updateEffect(create, deps) {
+  return updateEffectImpl(PassiveEffect, HookPassive, create, deps)
+}
+
+/**
+ * @param {number} fiberFlags
+ * @param {number} hookFlags
+ * @param {*} create
+ * @param {any[]} deps
+ */
+function mountEffectImpl(fiberFlags, hookFlags, create, deps) {
+  const hook = mountWorkInProgressHook()
+  const nextDeps = typeof deps === 'undefined' ? null : deps
+  currentlyRenderingFiber.flags |= fiberFlags
+  hook.memoizedState = pushEffect(HookHasEffect | hookFlags, create, undefined, nextDeps)
+}
+
+function pushEffect(tag, create, destroy, deps) {
+  const effect = {
+    tag,
+    create,
+    destroy,
+    deps,
+    next: null
+  }
+  let componentUpdateQueue = currentlyRenderingFiber.updateQueue
+  if (!componentUpdateQueue) {
+    componentUpdateQueue = currentlyRenderingFiber.updateQueue =
+      createFunctionComponentUpdateQueue()
+    componentUpdateQueue.lastEffect = effect.next = effect
+  } else {
+    const lastEffect = componentUpdateQueue.lastEffect
+    if (!lastEffect) {
+      componentUpdateQueue.lastEffect = effect.next = effect
+    } else {
+      const firstEffect = lastEffect.next
+      lastEffect.next = effect
+      effect.next = firstEffect
+      componentUpdateQueue.lastEffect = effect
+    }
+  }
+
+  return effect
+}
+
+function createFunctionComponentUpdateQueue() {
+  return {
+    lastEffect: null
+  }
+}
+
+/**
+ * @param {number} fiberFlags
+ * @param {number} hookFlags
+ * @param {*} create
+ * @param {any[]} deps
+ */
+function updateEffectImpl(fiberFlags, hookFlags, create, deps) {
+  const hook = updateWorkInProgressHook()
+  const nextDeps = deps || null
+  let destroy
+  if (currentHook) {
+    const prevEffect = currentHook.memoizedState
+    destroy = prevEffect.destroy
+    if (nextDeps) {
+      const prevDeps = prevEffect.deps
+      if (areHookInputsEqual(nextDeps, prevDeps)) {
+        hook.memoizedState = pushEffect(hookFlags, create, destroy, nextDeps)
+        return
+      }
+    }
+  }
+  currentlyRenderingFiber.flags |= fiberFlags
+  hook.memoizedState = pushEffect(HookHasEffect | hookFlags, create, destroy, nextDeps)
+}
+
+function areHookInputsEqual(nextDeps, prevDeps) {
+  if (!prevDeps || !nextDeps) {
+    return false
+  }
+  for (let i = 0; i < nextDeps.length && i < prevDeps.length; i++) {
+    if (Object.is(nextDeps[i], prevDeps[i])) {
+      continue
+    }
+    return false
+  }
+
+  return true
 }
 
 function mountWorkInProgressHook() {
@@ -169,6 +271,7 @@ function updateWorkInProgressHook() {
  */
 export function renderWithHooks(current, workInProgress, Component, props) {
   currentlyRenderingFiber = workInProgress
+  workInProgress.updateQueue = null
   if (current && current.memoizedState) {
     ReactCurrentDispatcher.current = HooksDispatcherOnUpdate
   } else {
