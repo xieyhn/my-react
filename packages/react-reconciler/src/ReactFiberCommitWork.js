@@ -163,7 +163,7 @@ function getHostSibling(fiber) {
 
     // 如果 fiber 对应的节点不是 DOM 节点（即是组件），则先判断此组件是否有新增标识，如果此组件有新增标识，说明此组件以及后代都是新增的，因此没有必要再往下找
     // 如果此组件不是新增的，继续向下找 fiber，尝试找到已经存在于文档树中的 fiber（对应的 DOM)
-    while (node.tag !== HostComponent || node.tag !== HostText) {
+    while (node.tag !== HostComponent && node.tag !== HostText) {
       if (node.flags & Placement) {
         continue siblings
       } else {
