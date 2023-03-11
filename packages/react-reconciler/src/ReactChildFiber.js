@@ -2,6 +2,7 @@ import { isArray } from 'shared/isArray'
 import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols'
 import { createFiberFromElement, createFiberFromText, createWorkInProgress } from './ReactFiber'
 import { ChildDeletion, Placement } from './ReactFiberFlags'
+import { HostText } from './ReactWorkTags'
 
 /**
  * @param {boolean} shouldTrackSideEffects
@@ -38,13 +39,13 @@ function createChildReconciler(shouldTrackSideEffects) {
 
   /**
    * 移除 currentFirstChild 后面所有的兄弟节点
-   * @param {import('./ReactFiber').FiberNode} returnFiber 
-   * @param {import('./ReactFiber').FiberNode} currentFirstChild 
+   * @param {import('./ReactFiber').FiberNode} returnFiber
+   * @param {import('./ReactFiber').FiberNode} currentFirstChild
    */
   function deleteRemainingChildren(returnFiber, currentFirstChild) {
     if (!shouldTrackSideEffects) return
     let childToDelete = currentFirstChild
-    while(childToDelete) {
+    while (childToDelete) {
       deleteChild(returnFiber, childToDelete)
       childToDelete = childToDelete.sibling
     }
@@ -79,7 +80,7 @@ function createChildReconciler(shouldTrackSideEffects) {
       child = child.sibling
     }
 
-    // 上面循环没有找到可复用的节点，这里创建新的节点
+    // 上面循环没有找到可复用的节点，这里创建新的
     const created = createFiberFromElement(element)
     created.return = returnFiber
     return created
@@ -121,15 +122,130 @@ function createChildReconciler(shouldTrackSideEffects) {
   }
 
   /**
-   *
    * @param {import('./ReactFiber').FiberNode} newFiber
+   * @param {number} lastPlacedIndex
    * @param {number} newIndex
    */
-  function placeChild(newFiber, newIndex) {
+  function placeChild(newFiber, lastPlacedIndex, newIndex) {
     newFiber.index = newIndex
-
-    if (shouldTrackSideEffects) {
+    if (!shouldTrackSideEffects) {
+      return
+    }
+    if (newFiber.alternate) {
+      // 是复用的 fiber，存在 DOM
+      const oldIndex = newFiber.alternate.index
+      if (oldIndex < lastPlacedIndex) {
+        newFiber.flags |= Placement
+        return lastPlacedIndex
+      } else {
+        return oldIndex
+      }
+    } else {
       newFiber.flags |= Placement
+      return lastPlacedIndex
+    }
+  }
+
+  /**
+   *
+   * @param {import('./ReactFiber').FiberNode} returnFiber
+   * @param {import('./ReactFiber').FiberNode} current
+   * @param {ReturnType<import('react/src/jsx/ReactJSXElement').ReactElement>} element
+   */
+  function updateElement(returnFiber, current, element) {
+    const elementType = element.type
+    if (current) {
+      if (current.type === elementType) {
+        const existing = useFiber(current, element.props)
+        existing.return = returnFiber
+        return existing
+      }
+    }
+    const created = createFiberFromElement(element)
+    created.return = returnFiber
+    return created
+  }
+
+  /**
+   *
+   * @param {import('./ReactFiber').FiberNode} returnFiber
+   * @param {import('./ReactFiber').FiberNode} oldFiber
+   * @param {ReturnType<import('react/src/jsx/ReactJSXElement').ReactElement>} newChild
+   */
+  function updateSlot(returnFiber, oldFiber, newChild) {
+    const key = oldFiber && oldFiber.key
+
+    if (typeof newChild === 'object' && newChild !== null) {
+      switch (newChild.$$typeof) {
+        case REACT_ELEMENT_TYPE:
+          if (newChild.key === key) {
+            return updateElement(returnFiber, oldFiber, newChild)
+          }
+          break
+        default:
+          break
+      }
+    }
+  }
+
+  /**
+   * @param {import('./ReactFiber').FiberNode} returnFiber 父 Fiber
+   * @param {import('./ReactFiber').FiberNode} currentFirstChild current 第一个子 Fiber
+   */
+  function mapRemainingChildren(returnFiber, currentFirstChild) {
+    // 记录还存在的
+    const existingChildren = new Map()
+    let existingFirstChild = currentFirstChild
+
+    while (existingFirstChild) {
+      if (typeof existingFirstChild.key !== 'undefined' && existingFirstChild.key !== null) {
+        existingChildren.set(existingFirstChild.key, existingFirstChild)
+      } else {
+        existingChildren.set(existingFirstChild.index, existingFirstChild)
+      }
+
+      existingFirstChild = existingFirstChild.sibling
+    }
+
+    return existingChildren
+  }
+
+  /**
+   * @param {import('./ReactFiber').FiberNode} returnFiber
+   * @param {import('./ReactFiber').FiberNode} current
+   * @param {string} textContent
+   */
+  function updateTextNode(returnFiber, current, textContent) {
+    if (!current || current.tag !== HostText) {
+      const created = createFiberFromText(textContent)
+      created.return = returnFiber
+      return created
+    } else {
+      const existing = useFiber(current, textContent)
+      existing.return = returnFiber
+      return existing
+    }
+  }
+
+  /**
+   * @param {Map<string, import('./ReactFiber').FiberNode} existingChildren
+   * @param {import('./ReactFiber').FiberNode} returnFiber
+   * @param {number} newIndex
+   * @param {ReturnType<import('react/src/jsx/ReactJSXElement').ReactElement>} newChild
+   */
+  function updateFromMap(existingChildren, returnFiber, newIndex, newChild) {
+    if ((typeof newChild === 'string' && newChild) || typeof newChild === 'number') {
+      const matchedFiber = existingChildren.get(newIndex)
+      return updateTextNode(returnFiber, matchedFiber, `${newChild}`)
+    }
+    if (typeof newChild === 'object' && newChild !== null) {
+      switch (newChild.$$typeof) {
+        case REACT_ELEMENT_TYPE:
+          const matchedFiber = existingChildren.get(newChild.key ?? newIndex)
+          return updateElement(returnFiber, matchedFiber, newChild)
+        default:
+          break
+      }
     }
   }
 
@@ -147,17 +263,78 @@ function createChildReconciler(shouldTrackSideEffects) {
      * @type {import('./ReactFiber').FiberNode}
      */
     let previousNewFiber = null
+    let oldFiber = currentFirstChild
+    let nextOldFiber = null
+    let lastPlacedIndex = 0
 
-    for (; newIndex < newChildren.length; newIndex++) {
-      const newFiber = createChild(returnFiber, newChildren[newIndex])
-      if (!newFiber) continue
-      placeChild(newFiber, newIndex)
+    // 处理老节点和新节点前面个数相同的部分
+    for (; oldFiber && newIndex < newChildren.length; newIndex++) {
+      nextOldFiber = oldFiber.sibling
+      const newFiber = updateSlot(returnFiber, oldFiber, newChildren[newIndex])
+      if (!newFiber) {
+        // 没有可以复用 fiber，结束本轮循环
+        break
+      }
+      if (shouldTrackSideEffects) {
+        if (oldFiber && !newFiber.alternate) {
+          deleteChild(returnFiber, oldFiber)
+        }
+      }
+      placeChild(newFiber, lastPlacedIndex, newIndex)
       if (!previousNewFiber) {
         resultingFirstChild = newFiber
       } else {
         previousNewFiber.sibling = newFiber
       }
       previousNewFiber = newFiber
+      oldFiber = nextOldFiber
+    }
+
+    // 如果新的 children 遍历完成，可以移除剩余的老 fiber 了
+    if (newIndex === newChildren.length) {
+      deleteRemainingChildren(returnFiber, oldFiber)
+      return
+    }
+
+    // 如没有老 fiber 了，新的 fiber 直接插入
+    if (!oldFiber) {
+      // 若有新增的元素
+      for (; newIndex < newChildren.length; newIndex++) {
+        const newFiber = createChild(returnFiber, newChildren[newIndex])
+        if (!newFiber) continue
+        placeChild(newFiber, lastPlacedIndex, newIndex)
+        if (!previousNewFiber) {
+          resultingFirstChild = newFiber
+        } else {
+          previousNewFiber.sibling = newFiber
+        }
+        previousNewFiber = newFiber
+      }
+    }
+
+    const existingChildren = mapRemainingChildren(returnFiber, oldFiber)
+
+    for (; newIndex < newChildren.length; newIndex++) {
+      const newFiber = updateFromMap(existingChildren, returnFiber, newIndex, newChildren[newIndex])
+      if (newFiber) {
+        if (shouldTrackSideEffects) {
+          if (newFiber.alternate) {
+            // 这个 newFiber 是复用的节点，移除老的 fiber 缓存
+            existingChildren.delete(newFiber.key ?? newIndex)
+          }
+        }
+        lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIndex)
+        if (!previousNewFiber) {
+          resultingFirstChild = newFiber
+        } else {
+          previousNewFiber.sibling = newFiber
+        }
+        previousNewFiber = newFiber
+      }
+    }
+
+    if (shouldTrackSideEffects) {
+      existingChildren.forEach(child => deleteChild(returnFiber, child))
     }
 
     return resultingFirstChild

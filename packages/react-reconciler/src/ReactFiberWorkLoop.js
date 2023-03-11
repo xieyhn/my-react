@@ -134,14 +134,21 @@ function printFinishedWork(fiber) {
 }
 
 function getFlags(flags) {
-  if (flags === Placement) {
-    return '插入'
-  } else if (flags === Update) {
-    return '更新'
-  } else if (flags === ChildDeletion) {
-    return '子节点有删除'
+  let str = '_'
+
+  if (flags & Placement) {
+    str += '插入_'
   }
-  return flags
+
+  if (flags & Update) {
+    str += '更新_'
+  }
+
+  if (flags & ChildDeletion) {
+    str += '子节点有删除_'
+  }
+
+  return str
 }
 
 function getTag(tag) {
