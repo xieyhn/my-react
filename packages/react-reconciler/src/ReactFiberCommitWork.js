@@ -351,7 +351,7 @@ function commitHookEffectListMount(flags, finishedWork) {
 }
 
 /**
- * @param {{import('./ReactFiber').FiberNode} finishedWork 
+ * @param {import('./ReactFiber').FiberNode} finishedWork 
  * @param {number} hookFlags 
  */
 function commitHookPassiveMountEffects(finishedWork, hookFlags) {

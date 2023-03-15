@@ -14,7 +14,7 @@ export function useState(initialState) {
   return dispatcher.useState(initialState)
 }
 
-export function useEffect(create) {
+export function useEffect(create, deps) {
   const dispatcher = resolveDispatcher()
-  dispatcher.useEffect(create)
+  dispatcher.useEffect(create, deps)
 }

@@ -20,6 +20,14 @@ function MyComponent() {
     }
   })
 
+  useEffect(() => {
+    console.log('my useEffect3')
+
+    return () => {
+      console.log('my useEffect3 destroy callback')
+    }
+  }, [])
+
   return flag ? <h1 onClick={() => setFlag(false)}>Hello Effect</h1> : <h1>New Hello Effect</h1>
 }
 
