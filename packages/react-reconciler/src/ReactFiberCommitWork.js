@@ -1,12 +1,16 @@
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
-import { MutationMask, Passive, Placement, Update } from './ReactFiberFlags'
+import { MutationMask, Passive, Placement, Update, LayoutMask } from './ReactFiberFlags'
 import {
   appendChild,
   commitUpdate,
   insertBefore,
   removeChild
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
-import { HasEffect as HookHasEffect, Passive as HookPassive } from './ReactHookEffectTags'
+import {
+  HasEffect as HookHasEffect,
+  Passive as HookPassive,
+  Layout as HookLayout
+} from './ReactHookEffectTags'
 
 /**
  * @type {HTMLElement | null}
@@ -20,7 +24,7 @@ let hostParent = null
  */
 function recursivelyTraverseDeletionEffects(finishedRoot, nearestMountedAncestor, parent) {
   let child = parent.child
-  while(child) {
+  while (child) {
     commitDeletionEffectsOnFiber(finishedRoot, nearestMountedAncestor, child)
     child = child.sibling
   }
@@ -223,10 +227,17 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
 
   switch (finishedWork.tag) {
     case HostRoot:
-    case HostText:
+    case HostText: {
+      recursivelyTraverseMutationEffects(root, finishedWork)
+      commitReconciliationEffects(finishedWork)
+      break
+    }
     case FunctionComponent: {
       recursivelyTraverseMutationEffects(root, finishedWork)
       commitReconciliationEffects(finishedWork)
+      if (flags & Update) {
+        commitHookEffectListUnmount(HookHasEffect | HookLayout, finishedWork)
+      }
       break
     }
     case HostComponent: {
@@ -259,12 +270,12 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
 }
 
 /**
- * @param {{import('./ReactFiber').FiberNode}} parentFiber 
+ * @param {{import('./ReactFiber').FiberNode}} parentFiber
  */
 function recursivelyTraversePassiveUnmountEffects(parentFiber) {
   if (parentFiber.subtreeFlags & Passive) {
     let child = parentFiber.child
-    while(child) {
+    while (child) {
       commitPassiveUnmountOnFiber(child)
       child = child.sibling
     }
@@ -286,7 +297,7 @@ function commitHookEffectListUnmount(flags, finishedWork) {
       }
       effect = effect.next
       // 这是一个循环链表，因此这样做循环退出条件
-    } while(effect !== firstEffect)
+    } while (effect !== firstEffect)
   }
 }
 
@@ -296,7 +307,7 @@ function commitHookPassiveUnmountEffects(finishedWork, hookFlags) {
 
 function commitPassiveUnmountOnFiber(finishedWork) {
   const flags = finishedWork.flags
-  switch(finishedWork.tag) {
+  switch (finishedWork.tag) {
     case HostRoot:
       recursivelyTraversePassiveUnmountEffects(finishedWork)
       break
@@ -316,13 +327,13 @@ export function commitPassiveUnmountEffect(finishedWork) {
 }
 
 /**
- * @param {import('./ReactFiberRoot').FiberRootNode} root 
- * @param {{import('./ReactFiber').FiberNode}} parentFiber 
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {{import('./ReactFiber').FiberNode}} parentFiber
  */
 function recursivelyTraversePassiveMountEffects(root, parentFiber) {
   if (parentFiber.subtreeFlags & Passive) {
     let child = parentFiber.child
-    while(child) {
+    while (child) {
       commitPassiveMountOnFiber(root, child)
       child = child.sibling
     }
@@ -330,8 +341,8 @@ function recursivelyTraversePassiveMountEffects(root, parentFiber) {
 }
 
 /**
- * @param {number} flags 
- * @param {import('./ReactFiber').FiberNode} finishedWork 
+ * @param {number} flags
+ * @param {import('./ReactFiber').FiberNode} finishedWork
  */
 function commitHookEffectListMount(flags, finishedWork) {
   const updateQueue = finishedWork.updateQueue
@@ -346,13 +357,13 @@ function commitHookEffectListMount(flags, finishedWork) {
       }
       effect = effect.next
       // 这是一个循环链表，因此这样做循环退出条件
-    } while(effect !== firstEffect)
+    } while (effect !== firstEffect)
   }
 }
 
 /**
- * @param {import('./ReactFiber').FiberNode} finishedWork 
- * @param {number} hookFlags 
+ * @param {import('./ReactFiber').FiberNode} finishedWork
+ * @param {number} hookFlags
  */
 function commitHookPassiveMountEffects(finishedWork, hookFlags) {
   commitHookEffectListMount(hookFlags, finishedWork)
@@ -360,11 +371,11 @@ function commitHookPassiveMountEffects(finishedWork, hookFlags) {
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} finishedRoot
- * @param {import('./ReactFiber').FiberNode} finishedWork 
+ * @param {import('./ReactFiber').FiberNode} finishedWork
  */
 function commitPassiveMountOnFiber(finishedRoot, finishedWork) {
   const flags = finishedWork.flags
-  switch(finishedWork.tag) {
+  switch (finishedWork.tag) {
     case HostRoot:
       recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork)
       break
@@ -381,8 +392,63 @@ function commitPassiveMountOnFiber(finishedRoot, finishedWork) {
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
- * @param {import('./ReactFiber').FiberNode} finishedWork 
+ * @param {import('./ReactFiber').FiberNode} finishedWork
  */
 export function commitPassiveMountEffect(root, finishedWork) {
   commitPassiveMountOnFiber(root, finishedWork)
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {{import('./ReactFiber').FiberNode}} parentFiber
+ */
+function recursivelyTraverseLayoutMountEffects(root, parentFiber) {
+  if (parentFiber.subtreeFlags & LayoutMask) {
+    let child = parentFiber.child
+    while (child) {
+      const current = child.alternate
+      commitLayoutEffectOnFiber(root, current, child)
+      child = child.sibling
+    }
+  }
+}
+
+/**
+ *
+ * @param {import('./ReactFiber').FiberNode} finishedWork
+ * @param {number} hookFlags
+ */
+function commitHookLayoutEffects(finishedWork, hookFlags) {
+  commitHookEffectListMount(hookFlags, finishedWork)
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} finishedRoot
+ * @param {import('./ReactFiber').FiberNode} current
+ * @param {import('./ReactFiber').FiberNode} finishedWork
+ */
+function commitLayoutEffectOnFiber(finishedRoot, current, finishedWork) {
+  const flags = finishedWork.flags
+  switch (finishedWork.tag) {
+    case HostRoot:
+      recursivelyTraverseLayoutMountEffects(finishedRoot, finishedWork)
+      break
+    case FunctionComponent:
+      recursivelyTraverseLayoutMountEffects(finishedRoot, finishedWork)
+      if (flags & LayoutMask) {
+        commitHookLayoutEffects(finishedWork, HookLayout | HookHasEffect)
+      }
+      break
+    default:
+      break
+  }
+}
+
+/**
+ * @param {import('./ReactFiber').FiberNode} finishedWork
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ */
+export function commitLayoutEffects(finishedWork, root) {
+  const current = finishedWork.alternate
+  commitLayoutEffectOnFiber(root, current, finishedWork)
 }

@@ -1,22 +1,22 @@
 import { createRoot } from 'react-dom/src/client/ReactDOMRoot'
-import { useReducer, useState, useEffect } from 'react/src/index'
+import { useReducer, useState, useEffect, useLayoutEffect } from 'react/src/index'
 
 function MyComponent() {
   const [flag, setFlag] = useState(true)
 
   useEffect(() => {
-    console.log('my useEffect')
+    console.log('my useEffect1')
 
     return () => {
-      console.log('my useEffect destroy callback')
+      console.log('my useEffect1 destroy callback')
     }
   })
 
-  useEffect(() => {
-    console.log('my useEffect2')
+  useLayoutEffect(() => {
+    console.log('my useLayoutEffect2')
 
     return () => {
-      console.log('my useEffect2 destroy callback')
+      console.log('my useLayoutEffect2 destroy callback')
     }
   })
 

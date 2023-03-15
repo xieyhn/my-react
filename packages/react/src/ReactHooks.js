@@ -18,3 +18,8 @@ export function useEffect(create, deps) {
   const dispatcher = resolveDispatcher()
   dispatcher.useEffect(create, deps)
 }
+
+export function useLayoutEffect(create, deps) {
+  const dispatcher = resolveDispatcher()
+  dispatcher.useLayoutEffect(create, deps)
+}

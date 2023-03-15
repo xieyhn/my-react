@@ -1,10 +1,10 @@
 import { schedulerCallback } from 'scheduler/index'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
-import { commitMutationEffectsOnFiber, commitPassiveMountEffect, commitPassiveUnmountEffect } from './ReactFiberCommitWork'
+import { commitLayoutEffects, commitMutationEffectsOnFiber, commitPassiveMountEffect, commitPassiveUnmountEffect } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates'
-import { ChildDeletion, MutationMask, NoFlags, Passive, Placement, Update } from './ReactFiberFlags'
+import { ChildDeletion, MutationMask, Passive, Placement, Update } from './ReactFiberFlags'
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /** @type {import('./ReactFiber').FiberNode} */
@@ -60,6 +60,7 @@ function flushPassiveEffect() {
  */
 function commitRoot(root) {
   const { finishedWork } = root
+  
   if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
     if (!rootDoesHavePassiveEffect) {
       rootDoesHavePassiveEffect = true
@@ -72,6 +73,7 @@ function commitRoot(root) {
 
   if (rootHasEffect || subtreeHasEffects) {
     commitMutationEffectsOnFiber(finishedWork, root)
+    commitLayoutEffects(finishedWork, root)
     if (rootDoesHavePassiveEffect) {
       rootDoesHavePassiveEffect = false
       rootWithPendingPassiveEffects = root
