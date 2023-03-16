@@ -1,4 +1,4 @@
-import { schedulerCallback } from 'scheduler/index'
+import { schedulerCallback, shouldYield, NormalPriority as NormalSchedulerPriority } from 'scheduler/index'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
 import { commitLayoutEffects, commitMutationEffectsOnFiber, commitPassiveMountEffect, commitPassiveUnmountEffect } from './ReactFiberCommitWork'
@@ -30,13 +30,13 @@ export function scheduleUpdateOnFiber(root) {
 function ensureRootIsScheduled(root) {
   if (workInProgressRoot) return
   workInProgressRoot = root
-  schedulerCallback(performConcurrentWorkOnRoot.bind(null, root))
+  schedulerCallback(NormalSchedulerPriority, performConcurrentWorkOnRoot.bind(null, root))
 }
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
-function performConcurrentWorkOnRoot(root) {
+function performConcurrentWorkOnRoot(root, timeout) {
   // 第一次渲染以同步方式，为了尽快展示页面
   renderRootSync(root)
   // commit
@@ -64,7 +64,7 @@ function commitRoot(root) {
   if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
     if (!rootDoesHavePassiveEffect) {
       rootDoesHavePassiveEffect = true
-      schedulerCallback(flushPassiveEffect)
+      schedulerCallback(NormalSchedulerPriority, flushPassiveEffect)
     }
   }
 
@@ -100,6 +100,12 @@ function renderRootSync(root) {
 
 function workLoopSync() {
   while (workInProgress) {
+    performUnitOfWork(workInProgress)
+  }
+}
+
+function workLoopConcurrent() {
+  while (workInProgress && !shouldYield()) {
     performUnitOfWork(workInProgress)
   }
 }

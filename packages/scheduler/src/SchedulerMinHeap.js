@@ -30,6 +30,7 @@ export function pop(heap) {
 }
 
 /**
+ * 返回堆顶
  * @param {any[]} heap
  */
 export function peek(heap) {
