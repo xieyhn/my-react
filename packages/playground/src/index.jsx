@@ -2,15 +2,18 @@ import { createRoot } from 'react-dom/src/client/ReactDOMRoot'
 import { useReducer, useState, useEffect, useLayoutEffect } from 'react/src/index'
 
 function MyComponent() {
-  console.log('MyComponent')
-  const [number, setNumber] = useState(0)
+  const [values, setValues] = useState(new Array(10).fill('A'))
 
   useEffect(() => {
-    setNumber(n => n + 1)
+    setValues(v => v.map(n => `${n}B`))
   }, [])
 
   return (
-    <button onClick={() => setNumber(n => n + 1)}>{number}</button>
+    <button onClick={() => setValues(v => v.map(n => `${n}C`))}>
+      {values.map((n, idx) => (
+        <span key={idx}>{n}</span>
+      ))}
+    </button>
   )
 }
 
