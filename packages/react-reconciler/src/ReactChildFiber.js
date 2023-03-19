@@ -293,7 +293,7 @@ function createChildReconciler(shouldTrackSideEffects) {
     // 如果新的 children 遍历完成，可以移除剩余的老 fiber 了
     if (newIndex === newChildren.length) {
       deleteRemainingChildren(returnFiber, oldFiber)
-      return
+      return resultingFirstChild
     }
 
     // 如没有老 fiber 了，新的 fiber 直接插入
