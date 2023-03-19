@@ -46,10 +46,6 @@ function shouldYieldToHost() {
   return true
 }
 
-export {
-  shouldYieldToHost as shouldYield
-}
-
 function workLoop(startTime) {
   let currentTime = startTime
   // 拿到优先级最高的任务（离过期时间最近的）
@@ -162,4 +158,13 @@ function preformWorkUntilDeadline() {
       }
     }
   }
+}
+
+export {
+  IdlePriority,
+  ImmediatePriority,
+  LowPriority,
+  NormalPriority,
+  UserBlockingPriority,
+  shouldYieldToHost as shouldYield
 }

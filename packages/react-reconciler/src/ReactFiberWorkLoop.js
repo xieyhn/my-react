@@ -1,11 +1,39 @@
-import { schedulerCallback, shouldYield, NormalPriority as NormalSchedulerPriority } from 'scheduler/index'
+import { getCurrentEventPriority } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
+import {
+  ContinuousEventPriority,
+  DefaultEventPriority,
+  DiscreteEventPriority,
+  getCurrentUpdatePriority,
+  IdleEventPriority,
+  lanesToEventPriority
+} from './ReactEventProperties'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
-import { commitLayoutEffects, commitMutationEffectsOnFiber, commitPassiveMountEffect, commitPassiveUnmountEffect } from './ReactFiberCommitWork'
+import {
+  commitLayoutEffects,
+  commitMutationEffectsOnFiber,
+  commitPassiveMountEffect,
+  commitPassiveUnmountEffect
+} from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates'
 import { ChildDeletion, MutationMask, Passive, Placement, Update } from './ReactFiberFlags'
+import {
+  getHighestPriorityLane,
+  getNextLanes,
+  markRootUpdated,
+  NoLanes,
+  SyncLane
+} from './ReactFiberLane'
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
+import {
+  ImmediatePriority as ImmediateSchedulerPriority,
+  UserBlockingPriority as UserBlockingSchedulerPriority,
+  IdlePriority as IdleSchedulerPriority,
+  NormalPriority as NormalSchedulerPriority,
+  shouldYield,
+  schedulerCallback
+} from 'scheduler/index'
 
 /** @type {import('./ReactFiber').FiberNode} */
 let workInProgress = null
@@ -16,11 +44,13 @@ let workInProgressRoot = null
  */
 let rootDoesHavePassiveEffect = false
 let rootWithPendingPassiveEffects = null
+let workInProgressRenderLanes = NoLanes
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
-export function scheduleUpdateOnFiber(root) {
+export function scheduleUpdateOnFiber(root, fiber, lane) {
+  markRootUpdated(root, lane)
   ensureRootIsScheduled(root)
 }
 
@@ -28,23 +58,51 @@ export function scheduleUpdateOnFiber(root) {
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
 function ensureRootIsScheduled(root) {
-  if (workInProgressRoot) return
-  workInProgressRoot = root
-  schedulerCallback(NormalSchedulerPriority, performConcurrentWorkOnRoot.bind(null, root))
+  const nextLanes = getNextLanes(root)
+  let newCallbackPriority = getHighestPriorityLane(nextLanes)
+  if (newCallbackPriority === SyncLane) {
+    // TODO
+  } else {
+    let schedulerPriorityLevel
+
+    switch (lanesToEventPriority(nextLanes)) {
+      case DiscreteEventPriority:
+        schedulerPriorityLevel = ImmediateSchedulerPriority
+        break
+      case ContinuousEventPriority:
+        schedulerPriorityLevel = UserBlockingSchedulerPriority
+        break
+      case DefaultEventPriority:
+        schedulerPriorityLevel = NormalSchedulerPriority
+        break
+      case IdleEventPriority:
+        schedulerPriorityLevel = IdleSchedulerPriority
+        break
+      default:
+        schedulerPriorityLevel = NormalSchedulerPriority
+        break
+    }
+    schedulerCallback(schedulerPriorityLevel, performConcurrentWorkOnRoot.bind(null, root))
+  }
+  // if (workInProgressRoot) return
+  // workInProgressRoot = root
 }
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
 function performConcurrentWorkOnRoot(root, timeout) {
+  const nextLanes = getNextLanes(root, NoLanes)
+  if (nextLanes === NoLanes) {
+    return null
+  }
   // 第一次渲染以同步方式，为了尽快展示页面
-  renderRootSync(root)
+  renderRootSync(root, nextLanes)
   // commit
   const finishedWork = root.current.alternate
   printFinishedWork(finishedWork)
   root.finishedWork = finishedWork
   commitRoot(root)
-  workInProgressRoot = null
 }
 
 function flushPassiveEffect() {
@@ -60,7 +118,9 @@ function flushPassiveEffect() {
  */
 function commitRoot(root) {
   const { finishedWork } = root
-  
+  workInProgressRoot = null
+  workInProgressRenderLanes = null
+
   if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
     if (!rootDoesHavePassiveEffect) {
       rootDoesHavePassiveEffect = true
@@ -84,17 +144,22 @@ function commitRoot(root) {
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {number} renderLanes
  */
-function prepareFreshStack(root) {
-  workInProgress = createWorkInProgress(root.current, null)
+function prepareFreshStack(root, renderLanes) {
+  if (root !== workInProgressRoot || workInProgressRenderLanes !== renderLanes) {
+    workInProgress = createWorkInProgress(root.current, null)
+  }
+  workInProgressRenderLanes = renderLanes
   finishQueueingConcurrentUpdates()
 }
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {number} nextLanes
  */
-function renderRootSync(root) {
-  prepareFreshStack(root)
+function renderRootSync(root, nextLanes) {
+  prepareFreshStack(root, nextLanes)
   workLoopSync()
 }
 
@@ -116,7 +181,7 @@ function workLoopConcurrent() {
 function performUnitOfWork(unitOfWork) {
   const current = unitOfWork.alternate
   // 返回第一个子节点
-  const next = beginWork(current, unitOfWork)
+  const next = beginWork(current, unitOfWork, workInProgressRenderLanes)
   unitOfWork.memoizedProps = unitOfWork.pendingProps
   if (!next) {
     completeUnitWork(unitOfWork)
@@ -147,6 +212,15 @@ function completeUnitWork(unitOfWork) {
     completedWork = returnFiber
     workInProgress = returnFiber
   } while (completedWork)
+}
+
+export function requestUpdateLane() {
+  const updateLane = getCurrentUpdatePriority()
+  if (updateLane !== NoLanes) {
+    return updateLane
+  }
+  const eventLane = getCurrentEventPriority()
+  return eventLane
 }
 
 /**

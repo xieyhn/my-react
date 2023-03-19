@@ -1,3 +1,5 @@
+import { DefaultEventPriority } from 'react-reconciler/src/ReactEventProperties'
+import { getEventPriority } from '../events/ReactDOMEventListener'
 import { diffProperties, setInitialProperties, updateProperties } from './ReactDOMComponent'
 import { precacheFiberNode, updateFiberProps } from './ReactDOMComponentTree'
 
@@ -82,4 +84,12 @@ export function commitUpdate(domElement, updatePayload, type, oldProps, newProps
  */
 export function removeChild(parent, child) {
   parent.removeChild(child)
+}
+
+export function getCurrentEventPriority() {
+  const currentEvent = window.event
+  if (currentEvent === undefined) {
+    return DefaultEventPriority
+  }
+  return getEventPriority(currentEvent.type)
 }

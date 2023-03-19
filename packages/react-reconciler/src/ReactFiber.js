@@ -54,6 +54,11 @@ export function FiberNode(tag, pendingProps, key) {
    * @type {FiberNode[] | null}
    */
   this.deletions = null
+
+  /**
+   * @type {number}
+   */
+  this.lanes = null
 }
 
 export function createFiber(tag, paddingProps, key) {

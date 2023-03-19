@@ -1,6 +1,6 @@
 import { shouldSetTextContent } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
 import { mountChildFibers, reconcileChildFibers } from './ReactChildFiber'
-import { processUpdateQueue } from './ReactFiberClassUpdateQueue'
+import { cloneUpdateQueue, processUpdateQueue } from './ReactFiberClassUpdateQueue'
 import { renderWithHooks } from './ReactFiberHooks'
 import { FunctionComponent, HostComponent, HostRoot, HostText, IndeterminateComponent } from './ReactWorkTags'
 
@@ -21,9 +21,12 @@ function reconcileChildren(current, workInProgress, nextChildren) {
 /**
  * @param {import('./ReactFiber').FiberNode} current
  * @param {import('./ReactFiber').FiberNode} workInProgress
+ * @param {number} renderLanes
  */
-function updateHostRoot(current, workInProgress) {
-  processUpdateQueue(workInProgress)
+function updateHostRoot(current, workInProgress, renderLanes) {
+  const nextProps = workInProgress.pendingProps
+  cloneUpdateQueue(current, workInProgress)
+  processUpdateQueue(workInProgress, nextProps, renderLanes)
   const nextState = workInProgress.memoizedState
   const nextChildren = nextState.element
   reconcileChildren(current, workInProgress, nextChildren)
@@ -76,21 +79,22 @@ function updateFunctionComponent(current, workInProgress, Component, nextProps) 
 /**
  * @param {import('./ReactFiber').FiberNode} current
  * @param {import('./ReactFiber').FiberNode} workInProgress
+ * @param {number} renderLanes
  */
-export function beginWork(current, workInProgress) {
+export function beginWork(current, workInProgress, renderLanes) {
   switch (workInProgress.tag) {
     case HostRoot:
-      return updateHostRoot(current, workInProgress)
+      return updateHostRoot(current, workInProgress, renderLanes)
     case HostComponent:
-      return updateHostComponent(current, workInProgress)
+      return updateHostComponent(current, workInProgress, renderLanes)
     case HostText:
       return null
     case IndeterminateComponent:
-      return mountIndeterminateComponent(current, workInProgress, workInProgress.type)
+      return mountIndeterminateComponent(current, workInProgress, workInProgress.type, renderLanes)
     case FunctionComponent:
       const Component = workInProgress.type
       const nextProps = workInProgress.pendingProps
-      return updateFunctionComponent(current, workInProgress, Component, nextProps)
+      return updateFunctionComponent(current, workInProgress, Component, nextProps, renderLanes)
     default:
       return null
   }

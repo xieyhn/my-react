@@ -1,5 +1,6 @@
 import { createHostRootFiber } from './ReactFiber'
 import { initialUpdateQueue } from './ReactFiberClassUpdateQueue'
+import { NoLanes } from './ReactFiberLane'
 
 export function FiberRootNode(containerInfo) {
   this.containerInfo = containerInfo
@@ -12,6 +13,11 @@ export function FiberRootNode(containerInfo) {
    * @type {import('./ReactFiber').FiberNode}
    */
   this.finishedWork = null
+
+  /**
+   * 表示此根上有哪些赛道等待被处理
+   */
+  this.pendingLanes = NoLanes
 }
 
 export function createFiberRoot(containerInfo) {
