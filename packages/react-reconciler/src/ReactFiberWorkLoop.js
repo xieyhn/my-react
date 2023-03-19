@@ -5,7 +5,8 @@ import {
   DiscreteEventPriority,
   getCurrentUpdatePriority,
   IdleEventPriority,
-  lanesToEventPriority
+  lanesToEventPriority,
+  setCurrentUpdatePriority
 } from './ReactEventProperties'
 import { createWorkInProgress } from './ReactFiber'
 import { beginWork } from './ReactFiberBeginWork'
@@ -21,6 +22,7 @@ import { ChildDeletion, MutationMask, Passive, Placement, Update } from './React
 import {
   getHighestPriorityLane,
   getNextLanes,
+  includesBlockingLane,
   markRootUpdated,
   NoLanes,
   SyncLane
@@ -34,6 +36,7 @@ import {
   shouldYield,
   schedulerCallback
 } from 'scheduler/index'
+import { flushSyncCallbacks, scheduleSyncCallback } from './ReactFiberSyncTaskQueue'
 
 /** @type {import('./ReactFiber').FiberNode} */
 let workInProgress = null
@@ -44,7 +47,11 @@ let workInProgressRoot = null
  */
 let rootDoesHavePassiveEffect = false
 let rootWithPendingPassiveEffects = null
-let workInProgressRenderLanes = NoLanes
+let workInProgressRootRenderLanes = NoLanes
+
+const RootInProgress = 0
+const RootCompleted = 5
+let workInProgressRootExitStatus = RootInProgress
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
@@ -57,11 +64,30 @@ export function scheduleUpdateOnFiber(root, fiber, lane) {
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
+function performSyncWorkOnRoot(root) {
+  const lanes = getNextLanes(root)
+  renderRootSync(root, lanes)
+  const finishedWork = root.current.alternate
+  root.finishedWork = finishedWork
+  commitRoot(root)
+  return null
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ */
 function ensureRootIsScheduled(root) {
   const nextLanes = getNextLanes(root)
+  if (nextLanes === NoLanes) {
+    return
+  }
   let newCallbackPriority = getHighestPriorityLane(nextLanes)
+  let newCallbackNode
+
   if (newCallbackPriority === SyncLane) {
-    // TODO
+    scheduleSyncCallback(performSyncWorkOnRoot.bind(null, root))
+    window.queueMicrotask(flushSyncCallbacks)
+    newCallbackNode = null
   } else {
     let schedulerPriorityLevel
 
@@ -82,27 +108,39 @@ function ensureRootIsScheduled(root) {
         schedulerPriorityLevel = NormalSchedulerPriority
         break
     }
-    schedulerCallback(schedulerPriorityLevel, performConcurrentWorkOnRoot.bind(null, root))
+    newCallbackNode = schedulerCallback(
+      schedulerPriorityLevel,
+      performConcurrentWorkOnRoot.bind(null, root)
+    )
   }
-  // if (workInProgressRoot) return
-  // workInProgressRoot = root
+  root.callbackNode = newCallbackNode
 }
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {*} didTimeout
  */
-function performConcurrentWorkOnRoot(root, timeout) {
-  const nextLanes = getNextLanes(root, NoLanes)
-  if (nextLanes === NoLanes) {
+function performConcurrentWorkOnRoot(root, didTimeout) {
+  const originalCallbackNode = root.callbackNode
+
+  const lanes = getNextLanes(root, NoLanes)
+  if (lanes === NoLanes) {
     return null
   }
-  // 第一次渲染以同步方式，为了尽快展示页面
-  renderRootSync(root, nextLanes)
-  // commit
-  const finishedWork = root.current.alternate
-  printFinishedWork(finishedWork)
-  root.finishedWork = finishedWork
-  commitRoot(root)
+  const shouldTimeSlice = !includesBlockingLane(root, lanes) && !didTimeout
+  const exitStatus = shouldTimeSlice
+    ? renderRootConcurrent(root, lanes)
+    : renderRootSync(root, lanes)
+  
+  if (exitStatus !== RootInProgress) {
+    const finishedWork = root.current.alternate
+    root.finishedWork = finishedWork
+    commitRoot(root)
+  }
+
+  if (root.callbackNode === originalCallbackNode) {
+    return performConcurrentWorkOnRoot.bind(null, root)
+  }
 }
 
 function flushPassiveEffect() {
@@ -117,9 +155,23 @@ function flushPassiveEffect() {
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
 function commitRoot(root) {
+  const previousUpdatePriority = getCurrentUpdatePriority()
+  try {
+    setCurrentUpdatePriority(DiscreteEventPriority)
+    commitRootImpl(root)
+  } finally {
+    setCurrentUpdatePriority(previousUpdatePriority)
+  }
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ */
+function commitRootImpl(root) {
   const { finishedWork } = root
   workInProgressRoot = null
-  workInProgressRenderLanes = null
+  workInProgressRootRenderLanes = null
+  root.callbackNode = null
 
   if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
     if (!rootDoesHavePassiveEffect) {
@@ -147,19 +199,34 @@ function commitRoot(root) {
  * @param {number} renderLanes
  */
 function prepareFreshStack(root, renderLanes) {
-  if (root !== workInProgressRoot || workInProgressRenderLanes !== renderLanes) {
-    workInProgress = createWorkInProgress(root.current, null)
-  }
-  workInProgressRenderLanes = renderLanes
+  workInProgress = createWorkInProgress(root.current, null)
+  workInProgressRootRenderLanes = renderLanes
   finishQueueingConcurrentUpdates()
 }
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
- * @param {number} nextLanes
+ * @param {number} renderLanes
  */
-function renderRootSync(root, nextLanes) {
-  prepareFreshStack(root, nextLanes)
+function renderRootConcurrent(root, renderLanes) {
+  if (workInProgressRoot !== root || workInProgressRootRenderLanes !== renderLanes) {
+    prepareFreshStack(root, renderLanes)
+  }
+  workLoopConcurrent()
+  if (workInProgress) {
+    return RootInProgress
+  }
+  return workInProgressRootExitStatus
+}
+
+/**
+ * @param {import('./ReactFiberRoot').FiberRootNode} root
+ * @param {number} renderLanes
+ */
+function renderRootSync(root, renderLanes) {
+  if (root !== workInProgressRoot || workInProgressRootRenderLanes !== renderLanes) {
+    prepareFreshStack(root, renderLanes)
+  }
   workLoopSync()
 }
 
@@ -181,7 +248,7 @@ function workLoopConcurrent() {
 function performUnitOfWork(unitOfWork) {
   const current = unitOfWork.alternate
   // 返回第一个子节点
-  const next = beginWork(current, unitOfWork, workInProgressRenderLanes)
+  const next = beginWork(current, unitOfWork, workInProgressRootRenderLanes)
   unitOfWork.memoizedProps = unitOfWork.pendingProps
   if (!next) {
     completeUnitWork(unitOfWork)
@@ -207,11 +274,13 @@ function completeUnitWork(unitOfWork) {
       workInProgress = siblingFiber
       return
     }
-
     // 没有了兄弟 fiber，返回处理父节点
     completedWork = returnFiber
     workInProgress = returnFiber
   } while (completedWork)
+  if (workInProgressRootExitStatus === RootInProgress) {
+    workInProgressRootExitStatus = RootCompleted
+  }
 }
 
 export function requestUpdateLane() {

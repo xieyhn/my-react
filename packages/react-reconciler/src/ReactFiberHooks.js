@@ -1,12 +1,13 @@
 import ReactSharedInternals from 'shared/ReactSharedInternals'
 import { enqueueConcurrentHookUpdate } from './ReactFiberConcurrentUpdates'
-import { scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
+import { requestUpdateLane, scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 import { Passive as PassiveEffect, Update as UpdateEffect } from './ReactFiberFlags'
 import {
   HasEffect as HookHasEffect,
   Passive as HookPassive,
   Layout as HookLayout
 } from './ReactHookEffectTags'
+import { NoLanes } from './ReactFiberLane'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 /**
@@ -45,7 +46,9 @@ function mountReducer(reducer, initialState) {
   hook.memoizedState = initialState
   const queue = {
     pending: null,
-    dispatch: null
+    dispatch: null,
+    lastRenderedReducer: reducer,
+    lastRenderedState: initialState
   }
   const dispatch = dispatchReducerAction.bind(null, currentlyRenderingFiber, queue)
   hook.queue = queue
@@ -115,23 +118,27 @@ function updateState() {
  * @param {*} action
  */
 function dispatchSetState(fiber, queue, action) {
+  const lane = requestUpdateLane()
   const update = {
+    lane,
     action,
     // 是否有急切的更新状态，在 useState 中，如果新旧两个值相同，不会进行页面更新，因此这里会同步计算新值并保存
     hasEagerState: false,
     eagerState: null,
     next: null
   }
-  const { lastRenderedReducer, lastRenderedState } = queue
-  const eagerState = lastRenderedReducer(lastRenderedState, action)
-  update.hasEagerState = true
-  update.eagerState = eagerState
-  if (Object.is(eagerState, lastRenderedState)) {
-    // useState 优化，在新旧值相同的情况下，不会进入更新
-    return
+  if (fiber.lanes === NoLanes && (!fiber.alternate || fiber.lanes === NoLanes)) {
+    const { lastRenderedReducer, lastRenderedState } = queue
+    const eagerState = lastRenderedReducer(lastRenderedState, action)
+    update.hasEagerState = true
+    update.eagerState = eagerState
+    if (Object.is(eagerState, lastRenderedState)) {
+      // useState 优化，在新旧值相同的情况下，不会进入更新
+      return
+    }
   }
-  const root = enqueueConcurrentHookUpdate(fiber, queue, update)
-  scheduleUpdateOnFiber(root)
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane)
+  scheduleUpdateOnFiber(root, fiber, lane)
 }
 
 /**

@@ -1,4 +1,10 @@
-import { ContinuousEventPriority, DefaultEventPriority, DiscreteEventPriority } from 'react-reconciler/src/ReactEventProperties'
+import {
+  ContinuousEventPriority,
+  DefaultEventPriority,
+  DiscreteEventPriority,
+  getCurrentUpdatePriority,
+  setCurrentUpdatePriority
+} from 'react-reconciler/src/ReactEventProperties'
 import { getClosestInstanceFromNode } from '../client/ReactDOMComponentTree'
 import { dispatchEventForPluginEventSystem } from './DOMPluginEventSystem'
 import getEventTarget from './getEventTarget'
@@ -25,7 +31,14 @@ export function createEventListenerWrapperWithPriority(
  * @param {string} nativeEvent
  */
 function dispatchDiscreteEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent) {
-  dispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent)
+  // 设置更新优先级
+  const previousPriority = getCurrentUpdatePriority()
+  try {
+    setCurrentUpdatePriority(DiscreteEventPriority)
+    dispatchEvent(domEventName, eventSystemFlags, targetContainer, nativeEvent)
+  } finally {
+    setCurrentUpdatePriority(previousPriority)
+  }
 }
 
 /**
@@ -47,10 +60,10 @@ export function dispatchEvent(domEventName, eventSystemFlags, targetContainer, n
 }
 
 /**
- * @param {string} domEventName 
+ * @param {string} domEventName
  */
 export function getEventPriority(domEventName) {
-  switch(domEventName) {
+  switch (domEventName) {
     case 'click':
       return DiscreteEventPriority
     case 'drag':

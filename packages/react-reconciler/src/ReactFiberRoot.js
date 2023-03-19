@@ -18,6 +18,11 @@ export function FiberRootNode(containerInfo) {
    * 表示此根上有哪些赛道等待被处理
    */
   this.pendingLanes = NoLanes
+  
+  /**
+   * ?
+   */
+  this.callbackNode = null
 }
 
 export function createFiberRoot(containerInfo) {
