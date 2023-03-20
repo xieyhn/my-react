@@ -24,6 +24,7 @@ import {
   getNextLanes,
   includesBlockingLane,
   markRootUpdated,
+  NoLane,
   NoLanes,
   SyncLane
 } from './ReactFiberLane'
@@ -34,7 +35,8 @@ import {
   IdlePriority as IdleSchedulerPriority,
   NormalPriority as NormalSchedulerPriority,
   shouldYield,
-  schedulerCallback
+  schedulerCallback,
+  cancelCallback
 } from 'scheduler/index'
 import { flushSyncCallbacks, scheduleSyncCallback } from './ReactFiberSyncTaskQueue'
 
@@ -77,11 +79,19 @@ function performSyncWorkOnRoot(root) {
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
 function ensureRootIsScheduled(root) {
-  const nextLanes = getNextLanes(root)
+  const existingCallbackNode = root.callbackNode
+  const nextLanes = getNextLanes(root, workInProgressRootRenderLanes)
   if (nextLanes === NoLanes) {
     return
   }
   let newCallbackPriority = getHighestPriorityLane(nextLanes)
+  const existingCallbackPriority = root.callbackPriority
+  if (existingCallbackPriority === newCallbackPriority) {
+    return
+  }
+  if (existingCallbackNode) {
+    cancelCallback(existingCallbackNode)
+  }
   let newCallbackNode
 
   if (newCallbackPriority === SyncLane) {
@@ -114,6 +124,7 @@ function ensureRootIsScheduled(root) {
     )
   }
   root.callbackNode = newCallbackNode
+  root.callbackPriority = newCallbackPriority
 }
 
 /**
@@ -170,8 +181,9 @@ function commitRoot(root) {
 function commitRootImpl(root) {
   const { finishedWork } = root
   workInProgressRoot = null
-  workInProgressRootRenderLanes = null
+  workInProgressRootRenderLanes = NoLanes
   root.callbackNode = null
+  root.callbackPriority = NoLane
 
   if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
     if (!rootDoesHavePassiveEffect) {
@@ -192,6 +204,8 @@ function commitRootImpl(root) {
     }
   }
   root.current = finishedWork
+  // root.pendingLanes = 16
+  // ensureRootIsScheduled(root)
 }
 
 /**
@@ -228,6 +242,7 @@ function renderRootSync(root, renderLanes) {
     prepareFreshStack(root, renderLanes)
   }
   workLoopSync()
+  return RootCompleted
 }
 
 function workLoopSync() {

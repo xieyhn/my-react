@@ -1,6 +1,6 @@
 import { createHostRootFiber } from './ReactFiber'
 import { initialUpdateQueue } from './ReactFiberClassUpdateQueue'
-import { NoLanes } from './ReactFiberLane'
+import { NoLane, NoLanes } from './ReactFiberLane'
 
 export function FiberRootNode(containerInfo) {
   this.containerInfo = containerInfo
@@ -23,6 +23,11 @@ export function FiberRootNode(containerInfo) {
    * ?
    */
   this.callbackNode = null
+
+  /**
+   * ?
+   */
+  this.callbackPriority = NoLane
 }
 
 export function createFiberRoot(containerInfo) {

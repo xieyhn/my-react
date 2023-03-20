@@ -63,12 +63,17 @@ export function markRootUpdated(root, updateLane) {
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root 
  */
-export function getNextLanes(root) {
+export function getNextLanes(root, workInProgressLanes) {
   const pendingLanes = root.pendingLanes
   if (pendingLanes === NoLanes) {
     return NoLanes
   }
   const nextLanes = getHighestPriorityLanes(pendingLanes)
+  if (workInProgressLanes !== NoLanes && workInProgressLanes !== nextLanes) {
+    if (nextLanes > workInProgressLanes) {
+      return workInProgressLanes
+    }
+  }
   return nextLanes
 }
 

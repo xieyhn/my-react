@@ -168,3 +168,7 @@ export {
   UserBlockingPriority,
   shouldYieldToHost as shouldYield
 }
+
+export function cancelCallback(task) {
+  task.callback = null
+}

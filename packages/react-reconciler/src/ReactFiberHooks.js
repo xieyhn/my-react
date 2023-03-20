@@ -76,7 +76,7 @@ function updateReducer(reducer) {
     } while (update && update !== firstUpdate)
   }
 
-  hook.memoizedState = newState
+  hook.memoizedState = queue.lastRenderedState = newState
   return [newState, queue.dispatch]
 }
 
@@ -96,7 +96,7 @@ function dispatchReducerAction(fiber, queue, action) {
 
 function mountState(initialState) {
   const hook = mountWorkInProgressHook()
-  hook.memoizedState = initialState
+  hook.memoizedState = hook.baseState = initialState
   const queue = {
     pending: null,
     dispatch: null,
