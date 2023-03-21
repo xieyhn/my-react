@@ -24,14 +24,16 @@ const HooksDispatcherOnMount = {
   useReducer: mountReducer,
   useState: mountState,
   useEffect: mountEffect,
-  useLayoutEffect: mountLayoutEffect
+  useLayoutEffect: mountLayoutEffect,
+  useRef: mountRef
 }
 
 const HooksDispatcherOnUpdate = {
   useReducer: updateReducer,
   useState: updateState,
   useEffect: updateEffect,
-  useLayoutEffect: updateLayoutEffect
+  useLayoutEffect: updateLayoutEffect,
+  useRef: updateRef
 }
 
 function baseStateReducer(state, action) {
@@ -239,6 +241,20 @@ function mountLayoutEffect(create, deps) {
  */
 function updateLayoutEffect(create, deps) {
   return updateEffectImpl(UpdateEffect, HookLayout, create, deps)
+}
+
+function mountRef(initialValue) {
+  const hook = mountWorkInProgressHook()
+  const ref = {
+    current: initialValue
+  }
+  hook.memoizedState = ref
+  return ref
+}
+
+function updateRef() {
+  const hook = updateWorkInProgressHook()
+  return hook.memoizedState
 }
 
 function areHookInputsEqual(nextDeps, prevDeps) {

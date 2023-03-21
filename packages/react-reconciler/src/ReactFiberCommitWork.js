@@ -1,5 +1,5 @@
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
-import { MutationMask, Passive, Placement, Update, LayoutMask } from './ReactFiberFlags'
+import { MutationMask, Passive, Placement, Update, LayoutMask, Ref } from './ReactFiberFlags'
 import {
   appendChild,
   commitUpdate,
@@ -219,6 +219,21 @@ function commitReconciliationEffects(finishedWork) {
 
 /**
  * @param {import('./ReactFiber').FiberNode} finishedWork
+ */
+function commitAttachRef(finishedWork) {
+  const ref = finishedWork.ref
+  if (ref) {
+    const instance = finishedWork.stateNode
+    if (typeof ref === 'function') {
+      ref(instance)
+    } else if (typeof ref === 'object') {
+      ref.current = instance
+    }
+  }
+}
+
+/**
+ * @param {import('./ReactFiber').FiberNode} finishedWork
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
 export function commitMutationEffectsOnFiber(finishedWork, root) {
@@ -243,6 +258,9 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
     case HostComponent: {
       recursivelyTraverseMutationEffects(root, finishedWork)
       commitReconciliationEffects(finishedWork)
+      if (flags & Ref) {
+        commitAttachRef(finishedWork)
+      }
       if (flags & Update) {
         const instance = finishedWork.stateNode
         if (instance) {

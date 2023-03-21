@@ -60,6 +60,8 @@ export function FiberNode(tag, pendingProps, key) {
    * @type {number}
    */
   this.lanes = NoLanes
+
+  this.ref = null
 }
 
 export function createFiber(tag, paddingProps, key) {
@@ -97,6 +99,7 @@ export function createWorkInProgress(current, pendingProps) {
   workInProgress.updateQueue = current.updateQueue
   workInProgress.sibling = current.sibling
   workInProgress.index = current.index
+  workInProgress.ref = current.ref
 
   return workInProgress
 }

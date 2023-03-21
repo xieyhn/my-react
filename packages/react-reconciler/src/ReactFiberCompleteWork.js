@@ -5,7 +5,7 @@ import {
   finalizeInitialChildren,
   prepareUpdate
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
-import { NoFlags, Update } from './ReactFiberFlags'
+import { NoFlags, Ref, Update } from './ReactFiberFlags'
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /**
@@ -81,6 +81,9 @@ export function completeWork(current, workInProgress) {
       if (current && workInProgress.stateNode) {
         // update
         updateHostComponent(current, workInProgress, type, newProps)
+        if (current.ref && current.ref !== workInProgress.ref) {
+          markRef(workInProgress)
+        }
       } else {
         // create
         const instance = createInstance(type, newProps, workInProgress)
@@ -88,6 +91,9 @@ export function completeWork(current, workInProgress) {
         // 第一次挂载阶段，直接将子节点挂载自己身上，不用更新啥的
         appendAllChildren(instance, workInProgress)
         finalizeInitialChildren(instance, type, newProps)
+        if (workInProgress.ref) {
+          markRef(workInProgress)
+        }
       }
       bubbleProperties(workInProgress)
       break
@@ -112,4 +118,8 @@ function bubbleProperties(completedWork) {
     child = child.sibling
   }
   completedWork.subtreeFlags = subtreeFlags
+}
+
+function markRef(workInProgress) {
+  workInProgress.flags |= Ref
 }
