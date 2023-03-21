@@ -18,17 +18,21 @@ import {
 } from './ReactFiberCommitWork'
 import { completeWork } from './ReactFiberCompleteWork'
 import { finishQueueingConcurrentUpdates } from './ReactFiberConcurrentUpdates'
-import { ChildDeletion, MutationMask, Passive, Placement, Update } from './ReactFiberFlags'
+import { MutationMask, Passive } from './ReactFiberFlags'
 import {
   getHighestPriorityLane,
   getNextLanes,
   includesBlockingLane,
+  includesExpiredLane,
+  markRootFinished,
   markRootUpdated,
+  markStarvedLanesAsExpired,
+  mergeLanes,
   NoLane,
   NoLanes,
+  NoTimestamp,
   SyncLane
 } from './ReactFiberLane'
-import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 import {
   ImmediatePriority as ImmediateSchedulerPriority,
   UserBlockingPriority as UserBlockingSchedulerPriority,
@@ -36,7 +40,8 @@ import {
   NormalPriority as NormalSchedulerPriority,
   shouldYield,
   schedulerCallback,
-  cancelCallback
+  cancelCallback,
+  now
 } from 'scheduler/index'
 import { flushSyncCallbacks, scheduleSyncCallback } from './ReactFiberSyncTaskQueue'
 
@@ -50,17 +55,17 @@ let workInProgressRoot = null
 let rootDoesHavePassiveEffect = false
 let rootWithPendingPassiveEffects = null
 let workInProgressRootRenderLanes = NoLanes
-
 const RootInProgress = 0
 const RootCompleted = 5
 let workInProgressRootExitStatus = RootInProgress
+let currentEventTime = NoTimestamp
 
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
-export function scheduleUpdateOnFiber(root, fiber, lane) {
+export function scheduleUpdateOnFiber(root, fiber, lane, eventTime) {
   markRootUpdated(root, lane)
-  ensureRootIsScheduled(root)
+  ensureRootIsScheduled(root, eventTime)
 }
 
 /**
@@ -78,8 +83,10 @@ function performSyncWorkOnRoot(root) {
 /**
  * @param {import('./ReactFiberRoot').FiberRootNode} root
  */
-function ensureRootIsScheduled(root) {
+function ensureRootIsScheduled(root, currentTime) {
   const existingCallbackNode = root.callbackNode
+  // 把饿死的 lane 标记为过期
+  markStarvedLanesAsExpired(root, currentTime)
   const nextLanes = getNextLanes(root, workInProgressRootRenderLanes)
   if (nextLanes === NoLanes) {
     return
@@ -138,11 +145,19 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
   if (lanes === NoLanes) {
     return null
   }
-  const shouldTimeSlice = !includesBlockingLane(root, lanes) && !didTimeout
+
+  // 不包含阻塞车道
+  const nonIncludesBlockingLane = !includesBlockingLane(root, lanes)
+  // 不包含过期车道
+  const nonIncludesExpiredLane = !includesExpiredLane(root, lanes)
+  // 时间片没有过期
+  const nonTimeout = !didTimeout
+  const shouldTimeSlice = nonIncludesBlockingLane && nonIncludesExpiredLane && nonTimeout
+
   const exitStatus = shouldTimeSlice
     ? renderRootConcurrent(root, lanes)
     : renderRootSync(root, lanes)
-  
+
   if (exitStatus !== RootInProgress) {
     const finishedWork = root.current.alternate
     root.finishedWork = finishedWork
@@ -184,6 +199,8 @@ function commitRootImpl(root) {
   workInProgressRootRenderLanes = NoLanes
   root.callbackNode = null
   root.callbackPriority = NoLane
+  const remainingLanes = mergeLanes(finishedWork.lanes, finishedWork.childLanes)
+  markRootFinished(root, remainingLanes)
 
   if (finishedWork.subtreeFlags & Passive || finishedWork.flags & Passive) {
     if (!rootDoesHavePassiveEffect) {
@@ -204,8 +221,8 @@ function commitRootImpl(root) {
     }
   }
   root.current = finishedWork
-  // root.pendingLanes = 16
-  // ensureRootIsScheduled(root)
+  // 在提交之后，root 上可能有跳过的更新，这里需要重新调度
+  ensureRootIsScheduled(root, now())
 }
 
 /**
@@ -307,54 +324,7 @@ export function requestUpdateLane() {
   return eventLane
 }
 
-/**
- *
- * @param {import('./ReactFiber').FiberNode} fiber
- */
-function printFinishedWork(fiber) {
-  let child = fiber.child
-  while (child) {
-    printFinishedWork(child)
-    child = child.sibling
-  }
-  if (fiber.flags !== 0) {
-    console.log(getFlags(fiber.flags), getTag(fiber.tag), getType(fiber.type), fiber.memoizedProps)
-  }
-}
-
-function getFlags(flags) {
-  let str = '_'
-
-  if (flags & Placement) {
-    str += '插入_'
-  }
-
-  if (flags & Update) {
-    str += '更新_'
-  }
-
-  if (flags & ChildDeletion) {
-    str += '子节点有删除_'
-  }
-
-  return str
-}
-
-function getTag(tag) {
-  switch (tag) {
-    case HostRoot:
-      return 'HostRoot'
-    case HostComponent:
-      return 'HostComponent'
-    case HostText:
-      return 'HostText'
-    case FunctionComponent:
-      return 'FunctionComponent'
-    default:
-      return tag
-  }
-}
-
-function getType(type) {
-  return typeof type === 'function' ? type.name : type
+export function requestEventTime() {
+  currentEventTime = now()
+  return currentEventTime
 }

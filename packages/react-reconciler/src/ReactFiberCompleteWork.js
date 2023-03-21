@@ -6,6 +6,7 @@ import {
   prepareUpdate
 } from 'react-dom-bindings/src/client/ReactDOMHostConfig'
 import { NoFlags, Ref, Update } from './ReactFiberFlags'
+import { mergeLanes, NoLanes } from './ReactFiberLane'
 import { FunctionComponent, HostComponent, HostRoot, HostText } from './ReactWorkTags'
 
 /**
@@ -110,13 +111,16 @@ export function completeWork(current, workInProgress) {
  * @param {import('./ReactFiber').FiberNode} completedWork
  */
 function bubbleProperties(completedWork) {
+  let newChildLanes =  NoLanes
   let subtreeFlags = NoFlags
   let child = completedWork.child
   while (child) {
+    newChildLanes = mergeLanes(newChildLanes, mergeLanes(child.lanes, child.childLanes))
     subtreeFlags |= child.subtreeFlags
     subtreeFlags |= child.flags
     child = child.sibling
   }
+  completedWork.childLanes = newChildLanes 
   completedWork.subtreeFlags = subtreeFlags
 }
 

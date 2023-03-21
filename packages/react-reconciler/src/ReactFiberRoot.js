@@ -1,6 +1,6 @@
 import { createHostRootFiber } from './ReactFiber'
 import { initialUpdateQueue } from './ReactFiberClassUpdateQueue'
-import { NoLane, NoLanes } from './ReactFiberLane'
+import { createLaneMap, NoLane, NoLanes, NoTimestamp } from './ReactFiberLane'
 
 export function FiberRootNode(containerInfo) {
   this.containerInfo = containerInfo
@@ -28,6 +28,16 @@ export function FiberRootNode(containerInfo) {
    * ?
    */
   this.callbackPriority = NoLane
+
+  /**
+   * 每个 lane 的过期时间
+   */
+  this.expirationTimes = createLaneMap(NoTimestamp)
+
+  /**
+   * 过期的 lanes
+   */
+  this.expiredLanes = NoLanes
 }
 
 export function createFiberRoot(containerInfo) {

@@ -1,13 +1,13 @@
 import ReactSharedInternals from 'shared/ReactSharedInternals'
 import { enqueueConcurrentHookUpdate } from './ReactFiberConcurrentUpdates'
-import { requestUpdateLane, scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
+import { requestEventTime, requestUpdateLane, scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 import { Passive as PassiveEffect, Update as UpdateEffect } from './ReactFiberFlags'
 import {
   HasEffect as HookHasEffect,
   Passive as HookPassive,
   Layout as HookLayout
 } from './ReactHookEffectTags'
-import { NoLanes } from './ReactFiberLane'
+import { isSubsetOfLanes, mergeLanes, NoLane, NoLanes } from './ReactFiberLane'
 
 const { ReactCurrentDispatcher } = ReactSharedInternals
 /**
@@ -19,6 +19,7 @@ let currentlyRenderingFiber = null
 let workInProgressHook = null
 // 老的 hook
 let currentHook = null
+let renderLanes = NoLanes
 
 const HooksDispatcherOnMount = {
   useReducer: mountReducer,
@@ -61,25 +62,80 @@ function mountReducer(reducer, initialState) {
 function updateReducer(reducer) {
   const hook = updateWorkInProgressHook()
   const queue = hook.queue
+  queue.lastRenderedReducer = reducer
+  const current = currentHook
+  let baseQueue = current.baseQueue
   const pendingQueue = queue.pending
-  let newState = currentHook.memoizedState
-
   if (pendingQueue) {
+    if (baseQueue) {
+      const baseFirst = baseQueue.next
+      const pendingFirst = pendingQueue.next
+      baseQueue.next = pendingFirst
+      pendingQueue.next = baseFirst
+    }
+    current.baseQueue = baseQueue = pendingQueue
     queue.pending = null
-    const firstUpdate = pendingQueue.next
-    let update = firstUpdate
+  }
+  if (baseQueue) {
+    const first = baseQueue.next
+    let newState = current.baseState
+    let newBaseState = null
+    let newBaseQueueFirst = null
+    let newBaseQueueLast = null
+    let update = first
+
     do {
-      if (update.hasEagerState) {
-        newState = update.eagerState
+      const updateLane = update.lane
+      const shouldSkipUpdate = !isSubsetOfLanes(renderLanes, updateLane)
+      if (shouldSkipUpdate) {
+        const clone = {
+          lane: updateLane,
+          action: update.action,
+          hasEagerState: update.hasEagerState,
+          eagerState: update.eagerState,
+          next: null
+        }
+        if (!newBaseQueueLast) {
+          newBaseQueueFirst = newBaseQueueLast = clone
+          newBaseState = newState
+        } else {
+          newBaseQueueLast = newBaseQueueLast.next = clone
+        }
+        currentlyRenderingFiber.lanes = mergeLanes(currentlyRenderingFiber.lanes, updateLane)
       } else {
-        newState = reducer(newState, update.action)
+        if (newBaseQueueLast) {
+          const clone = {
+            lane: NoLane,
+            action: update.action,
+            hasEagerState: update.hasEagerState,
+            eagerState: update.eagerState,
+            next: null
+          }
+          newBaseQueueLast = newBaseQueueLast.next = clone
+        }
+        if (update.hasEagerState) {
+          newState = update.eagerState
+        } else {
+          const action = update.action
+          newState = reducer(newState, action)
+        }
       }
       update = update.next
-    } while (update && update !== firstUpdate)
+    } while(update && update !== first)
+    if (!newBaseQueueLast) {
+      newBaseState = newState
+    } else {
+      newBaseQueueLast.next = newBaseQueueFirst
+    }
+    hook.memoizedState = newState
+    hook.baseState = newBaseState
+    hook.baseQueue = newBaseQueueLast
+    queue.lastRenderedState = newState
   }
-
-  hook.memoizedState = queue.lastRenderedState = newState
-  return [newState, queue.dispatch]
+  if (!baseQueue) {
+    queue.lanes = NoLanes
+  }
+  return [hook.memoizedState, queue.dispatch]
 }
 
 /**
@@ -93,7 +149,8 @@ function dispatchReducerAction(fiber, queue, action) {
     next: null
   }
   const root = enqueueConcurrentHookUpdate(fiber, queue, update)
-  scheduleUpdateOnFiber(root)
+  const eventTime = requestEventTime()
+  scheduleUpdateOnFiber(root, fiber, lane, eventTime)
 }
 
 function mountState(initialState) {
@@ -140,7 +197,8 @@ function dispatchSetState(fiber, queue, action) {
     }
   }
   const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane)
-  scheduleUpdateOnFiber(root, fiber, lane)
+  const eventTime = requestEventTime()
+  scheduleUpdateOnFiber(root, fiber, lane, eventTime)
 }
 
 /**
@@ -275,7 +333,11 @@ function mountWorkInProgressHook() {
   const hook = {
     memoizedState: null,
     queue: null,
-    next: null
+    next: null,
+    // 跳过前的末状态值
+    baseState: null,
+    // 跳过的更新链表
+    baseQueue: null
   }
   if (!workInProgressHook) {
     currentlyRenderingFiber.memoizedState = workInProgressHook = hook
@@ -297,7 +359,9 @@ function updateWorkInProgressHook() {
   const newHook = {
     memoizedState: currentHook.memoizedState,
     queue: currentHook.queue,
-    next: null
+    next: null,
+    baseState: currentHook.baseState,
+    baseQueue: currentHook.baseQueue
   }
   if (!workInProgressHook) {
     currentlyRenderingFiber.memoizedState = workInProgressHook = newHook
@@ -314,9 +378,11 @@ function updateWorkInProgressHook() {
  * @param {(...args: any[]) => import('./ReactFiber').FiberNode} Component
  * @param {Record<string, any>} props
  */
-export function renderWithHooks(current, workInProgress, Component, props) {
+export function renderWithHooks(current, workInProgress, Component, props, nextRenderLanes) {
+  renderLanes = nextRenderLanes
   currentlyRenderingFiber = workInProgress
   workInProgress.updateQueue = null
+  workInProgress.memoizedState = null
   if (current && current.memoizedState) {
     ReactCurrentDispatcher.current = HooksDispatcherOnUpdate
   } else {
@@ -326,5 +392,6 @@ export function renderWithHooks(current, workInProgress, Component, props) {
   currentlyRenderingFiber = null
   workInProgressHook = null
   currentHook = null
+  renderLanes = NoLanes
   return children
 }

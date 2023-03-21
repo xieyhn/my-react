@@ -166,7 +166,8 @@ export {
   LowPriority,
   NormalPriority,
   UserBlockingPriority,
-  shouldYieldToHost as shouldYield
+  shouldYieldToHost as shouldYield,
+  getCurrentTime as now
 }
 
 export function cancelCallback(task) {

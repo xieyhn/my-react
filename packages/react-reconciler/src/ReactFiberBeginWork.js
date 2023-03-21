@@ -70,8 +70,8 @@ function mountIndeterminateComponent(current, workInProgress, Component) {
  * @param {import('./ReactFiber').FiberNode} workInProgress
  * @param {(...args: any[]) => import('./ReactFiber').FiberNode} Component
  */
-function updateFunctionComponent(current, workInProgress, Component, nextProps) {
-  const nextChildren = renderWithHooks(current, workInProgress, Component, nextProps)
+function updateFunctionComponent(current, workInProgress, Component, nextProps, renderLanes) {
+  const nextChildren = renderWithHooks(current, workInProgress, Component, nextProps, renderLanes)
   reconcileChildren(current, workInProgress, nextChildren)
   return workInProgress.child
 }
@@ -82,6 +82,7 @@ function updateFunctionComponent(current, workInProgress, Component, nextProps) 
  * @param {number} renderLanes
  */
 export function beginWork(current, workInProgress, renderLanes) {
+  workInProgress.lanes = 0
   switch (workInProgress.tag) {
     case HostRoot:
       return updateHostRoot(current, workInProgress, renderLanes)

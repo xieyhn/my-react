@@ -1,6 +1,6 @@
 import { createFiberRoot } from './ReactFiberRoot'
 import { createUpdate, enqueueUpdate } from './ReactFiberClassUpdateQueue'
-import { requestUpdateLane, scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
+import { requestEventTime, requestUpdateLane, scheduleUpdateOnFiber } from './ReactFiberWorkLoop'
 
 /*
  * @param {HTMLElement} container
@@ -17,9 +17,10 @@ export function createContainer(containerInfo) {
 export function updateContainer(element, container) {
   // root fiber (FiberNode)
   const current = container.current
+  const eventTime = requestEventTime()
   const lane = requestUpdateLane(current)
   const update = createUpdate(lane)
   update.payload = { element }
   const root = enqueueUpdate(current, update, lane)
-  scheduleUpdateOnFiber(root, current, lane)
+  scheduleUpdateOnFiber(root, current, lane, eventTime)
 }
