@@ -99,7 +99,7 @@ export function processUpdateQueue(workInProgress, nextProps, renderLanes) {
         }
         newState = getStateFromUpdate(update, newState, nextProps)
       }
-      update = update.next;
+      update = update.next
     } while (update)
 
     if (!newLastBaseUpdate) {

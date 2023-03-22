@@ -2,7 +2,13 @@ import { shouldSetTextContent } from 'react-dom-bindings/src/client/ReactDOMHost
 import { mountChildFibers, reconcileChildFibers } from './ReactChildFiber'
 import { cloneUpdateQueue, processUpdateQueue } from './ReactFiberClassUpdateQueue'
 import { renderWithHooks } from './ReactFiberHooks'
-import { FunctionComponent, HostComponent, HostRoot, HostText, IndeterminateComponent } from './ReactWorkTags'
+import {
+  FunctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+  IndeterminateComponent
+} from './ReactWorkTags'
 
 /**
  *

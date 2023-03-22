@@ -12,4 +12,4 @@ export const Passive = 0b000000000000000100000000000
 export const MutationMask =
   Placement | Update | ChildDeletion | ContentReset | Ref | Hydrating | Visibility
 
-export const LayoutMask = Update | Ref | Visibility;
+export const LayoutMask = Update | Ref | Visibility

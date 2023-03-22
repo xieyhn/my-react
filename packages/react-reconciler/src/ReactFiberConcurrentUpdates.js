@@ -5,11 +5,11 @@ const concurrentQueues = []
 let concurrentQueuesIndex = 0
 
 /**
- * 
- * @param {import('./ReactFiber').FiberNode} fiber 
- * @param {*} queue 
- * @param {*} update 
- * @param {*} lane 
+ *
+ * @param {import('./ReactFiber').FiberNode} fiber
+ * @param {*} queue
+ * @param {*} update
+ * @param {*} lane
  */
 export function enqueueConcurrentClassUpdate(fiber, queue, update, lane) {
   enqueueUpdate(fiber, queue, update, lane)
@@ -44,19 +44,19 @@ function getRootForUpdatedFiber(sourceFiber) {
   let node = sourceFiber
   let parent = node.return
 
-  while(parent) {
+  while (parent) {
     node = parent
     parent = parent.return
   }
 
-  return node.tag === HostRoot ? node.stateNode : null 
+  return node.tag === HostRoot ? node.stateNode : null
 }
 
 export function finishQueueingConcurrentUpdates() {
   const endIndex = concurrentQueuesIndex
   concurrentQueuesIndex = 0
   let i = 0
-  while(i < endIndex) {
+  while (i < endIndex) {
     const fiber = concurrentQueues[i++]
     const queue = concurrentQueues[i++]
     const update = concurrentQueues[i++]

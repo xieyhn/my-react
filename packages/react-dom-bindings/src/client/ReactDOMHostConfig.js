@@ -38,40 +38,40 @@ export function finalizeInitialChildren(domElement, type, props) {
 }
 
 /**
- * 
- * @param {HTMLElement} parentInstance 
- * @param {HTMLElement} child 
+ *
+ * @param {HTMLElement} parentInstance
+ * @param {HTMLElement} child
  */
 export function appendChild(parentInstance, child) {
   parentInstance.appendChild(child)
 }
 
 /**
- * @param {HTMLElement} parentInstance 
- * @param {HTMLElement} child 
- * @param {HTMLElement} anchor 
+ * @param {HTMLElement} parentInstance
+ * @param {HTMLElement} child
+ * @param {HTMLElement} anchor
  */
 export function insertBefore(parentInstance, child, anchor) {
   parentInstance.insertBefore(child, anchor)
 }
 
 /**
- * @param {HTMLElement} domElement 
- * @param {*} type 
- * @param {*} oldProps 
- * @param {*} newProps 
+ * @param {HTMLElement} domElement
+ * @param {*} type
+ * @param {*} oldProps
+ * @param {*} newProps
  */
 export function prepareUpdate(domElement, type, oldProps, newProps) {
   return diffProperties(domElement, type, oldProps, newProps)
 }
 
 /**
- * @param {HTMLElement} domElement 
- * @param {*} updatePayload 
- * @param {*} type 
- * @param {*} oldProps 
- * @param {*} newProps 
- * @param {*} finishedWork 
+ * @param {HTMLElement} domElement
+ * @param {*} updatePayload
+ * @param {*} type
+ * @param {*} oldProps
+ * @param {*} newProps
+ * @param {*} finishedWork
  */
 export function commitUpdate(domElement, updatePayload, type, oldProps, newProps, finishedWork) {
   updateProperties(domElement, updatePayload)
@@ -79,8 +79,8 @@ export function commitUpdate(domElement, updatePayload, type, oldProps, newProps
 }
 
 /**
- * @param {HTMLElement} parent 
- * @param {HTMLElement} child 
+ * @param {HTMLElement} parent
+ * @param {HTMLElement} child
  */
 export function removeChild(parent, child) {
   parent.removeChild(child)

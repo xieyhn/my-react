@@ -1,5 +1,11 @@
-import { push, peek, pop } from "../SchedulerMinHeap"
-import { IdlePriority, ImmediatePriority, LowPriority, NormalPriority, UserBlockingPriority } from "../SchedulerPriorities"
+import { push, peek, pop } from '../SchedulerMinHeap'
+import {
+  IdlePriority,
+  ImmediatePriority,
+  LowPriority,
+  NormalPriority,
+  UserBlockingPriority
+} from '../SchedulerPriorities'
 
 // Max 31 bit integer. The max integer size in V8 for 32-bit systems.
 // Math.pow(2, 30) - 1
@@ -51,7 +57,7 @@ function workLoop(startTime) {
   // 拿到优先级最高的任务（离过期时间最近的）
   currentTask = peek(taskQueue)
 
-  while(currentTask) {
+  while (currentTask) {
     if (currentTask.expirationTime > currentTime && shouldYieldToHost()) {
       // 未过期，但需要放弃（申请的时间片到期了）
       // 如果过期了，应该继续强制执行
@@ -146,7 +152,7 @@ function preformWorkUntilDeadline() {
   if (scheduleHostCallback) {
     startTime = getCurrentTime()
     let hasMoreWork = true
-    
+
     try {
       hasMoreWork = scheduleHostCallback(startTime)
     } finally {

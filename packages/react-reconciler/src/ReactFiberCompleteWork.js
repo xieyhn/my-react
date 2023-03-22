@@ -41,17 +41,17 @@ function appendAllChildren(parent, workInProgress) {
 }
 
 /**
- * @param {import('./ReactFiber').FiberNode} workInProgress 
+ * @param {import('./ReactFiber').FiberNode} workInProgress
  */
 function markUpdate(workInProgress) {
   workInProgress.flags |= Update
 }
 
 /**
- * @param {import('./ReactFiber').FiberNode} current 
- * @param {import('./ReactFiber').FiberNode} workInProgress 
- * @param {*} type 
- * @param {*} newProps 
+ * @param {import('./ReactFiber').FiberNode} current
+ * @param {import('./ReactFiber').FiberNode} workInProgress
+ * @param {*} type
+ * @param {*} newProps
  */
 function updateHostComponent(current, workInProgress, type, newProps) {
   const oldProps = current.memoizedProps
@@ -111,7 +111,7 @@ export function completeWork(current, workInProgress) {
  * @param {import('./ReactFiber').FiberNode} completedWork
  */
 function bubbleProperties(completedWork) {
-  let newChildLanes =  NoLanes
+  let newChildLanes = NoLanes
   let subtreeFlags = NoFlags
   let child = completedWork.child
   while (child) {
@@ -120,7 +120,7 @@ function bubbleProperties(completedWork) {
     subtreeFlags |= child.flags
     child = child.sibling
   }
-  completedWork.childLanes = newChildLanes 
+  completedWork.childLanes = newChildLanes
   completedWork.subtreeFlags = subtreeFlags
 }
 

@@ -121,7 +121,7 @@ function updateReducer(reducer) {
         }
       }
       update = update.next
-    } while(update && update !== first)
+    } while (update && update !== first)
     if (!newBaseQueueLast) {
       newBaseState = newState
     } else {

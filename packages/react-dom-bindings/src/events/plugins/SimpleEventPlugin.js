@@ -22,7 +22,7 @@ export function extractEvents(
   targetContainer
 ) {
   const isCapturePhase = (eventSystemFlags & IS_CAPTURE_PHASE) !== 0
-  
+
   const reactName = topLevelEventsToReactNames.get(domEventName)
   let SyntheticEventCtor = null
   let reactEventType = domEventName

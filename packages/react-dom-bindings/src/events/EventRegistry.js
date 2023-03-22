@@ -1,8 +1,8 @@
 export const allNativeEvents = new Set()
 
 /**
- * @param {string} registrationName 
- * @param {string[]} dependencies 
+ * @param {string} registrationName
+ * @param {string[]} dependencies
  */
 export function registerTwoPhaseEvent(registrationName, dependencies) {
   registerDirectEvent(registrationName, dependencies)
@@ -10,11 +10,11 @@ export function registerTwoPhaseEvent(registrationName, dependencies) {
 }
 
 /**
- * @param {string} registrationName 
- * @param {string[]} dependencies 
+ * @param {string} registrationName
+ * @param {string[]} dependencies
  */
 function registerDirectEvent(registrationName, dependencies) {
-  for(let i = 0; i < dependencies.length; i++) {
+  for (let i = 0; i < dependencies.length; i++) {
     allNativeEvents.add(dependencies[i])
   }
 }

@@ -83,7 +83,7 @@ export function diffProperties(domElement, type, oldProps, newProps) {
   }
 
   updatePayload.push(STYLE, styleUpdates)
-  
+
   return updatePayload
 }
 
@@ -92,11 +92,11 @@ export function updateProperties(domElement, updatePayload) {
 }
 
 /**
- * @param {HTMLElement} domElement 
- * @param {any[]} updatePayload 
+ * @param {HTMLElement} domElement
+ * @param {any[]} updatePayload
  */
 function updateDOMProperties(domElement, updatePayload) {
-  for(let i = 0; i < updatePayload.length; i += 2) {
+  for (let i = 0; i < updatePayload.length; i += 2) {
     const key = updatePayload[i]
     const value = updatePayload[i + 1]
 

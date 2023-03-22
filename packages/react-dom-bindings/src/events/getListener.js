@@ -1,8 +1,8 @@
 import { getFiberCurrentPropsFromNode } from '../client/ReactDOMComponentTree'
 
 /**
- * @param {import('react-reconciler/src/ReactFiber').FiberNode} instance 
- * @param {string} reactEventName 
+ * @param {import('react-reconciler/src/ReactFiber').FiberNode} instance
+ * @param {string} reactEventName
  */
 export default function getListener(instance, reactEventName) {
   const { stateNode } = instance

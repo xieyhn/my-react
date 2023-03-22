@@ -14,15 +14,15 @@ export function getClosestInstanceFromNode(targetNode) {
 }
 
 /**
- * @param {import('react-reconciler/src/ReactFiber').FiberNode} fiber 
- * @param {HTMLElement} domElement 
+ * @param {import('react-reconciler/src/ReactFiber').FiberNode} fiber
+ * @param {HTMLElement} domElement
  */
 export function precacheFiberNode(fiber, domElement) {
   domElement[internalInstanceKey] = fiber
 }
 
 /**
- * @param {HTMLElement} domElement 
+ * @param {HTMLElement} domElement
  * @param {*} props
  */
 export function updateFiberProps(domElement, props) {
@@ -30,7 +30,7 @@ export function updateFiberProps(domElement, props) {
 }
 
 /**
- * @param {HTMLElement} domElement 
+ * @param {HTMLElement} domElement
  */
 export function getFiberCurrentPropsFromNode(domElement) {
   return domElement[internalPropsKey] || null

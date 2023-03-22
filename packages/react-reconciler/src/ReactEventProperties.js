@@ -1,4 +1,12 @@
-import { DefaultLane, getHighestPriorityLane, IdleLane, includesNonIdleWork, InputContinuousLane, NoLane, SyncLane } from "./ReactFiberLane";
+import {
+  DefaultLane,
+  getHighestPriorityLane,
+  IdleLane,
+  includesNonIdleWork,
+  InputContinuousLane,
+  NoLane,
+  SyncLane
+} from './ReactFiberLane'
 
 let currentUpdatePriority = NoLane
 
@@ -19,7 +27,7 @@ export function setCurrentUpdatePriority(newPriority) {
 }
 
 export function isHigherEventPriority(a, b) {
-  return (a !== 0) && a < b
+  return a !== 0 && a < b
 }
 
 export function lanesToEventPriority(lanes) {
